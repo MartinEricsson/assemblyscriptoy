@@ -1,0 +1,24 @@
+{
+  "entries": [
+    "src/shader.ts"
+  ],
+  "targets": {
+    "release": {
+      "outFile": "build/shader.wasm",
+      "sourceMap": false,
+      "optimizeLevel": 3,
+      "shrinkLevel": 0,
+      "converge": false,
+      "noAssert": false,
+      "exportRuntime": false,
+      "exportTable": false,
+      "initialMemory": 1,
+      "maximumMemory": 1,
+      "memoryBase": 0,
+      "runtime": "stub"
+    }
+  },
+  "options": {
+    "bindings": "esm"
+  }
+}

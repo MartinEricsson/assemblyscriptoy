@@ -1,0 +1,22 @@
+{
+  "name": "assemblyscript-toy",
+  "version": "1.0.0",
+  "description": "An AssemblyScript to WGSL playground",
+  "type": "module",
+  "license": "ISC",
+  "author": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsx src/build.ts",
+    "dev": "pnpm build && vite",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@gasm-compiler/core": "^0.1.1",
+    "assemblyscript": "^0.28.9"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "vite": "^5.0.0"
+  }
+}
