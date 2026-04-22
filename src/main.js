@@ -7,11 +7,19 @@ import {
     shaderFlagshipClouds,
     shaderFlagshipFire,
     shaderCornellBoxGi,
+    shaderXorTextureZoo,
+    shaderPlasma,
+    shaderMetaballs,
+    shaderVoxelRaycaster,
     shaderStarter
 } from '../shader-source.js';
 
 const demoLibrary = {
     'starter': { name: 'Starter Template', code: shaderStarter },
+    'xorTextureZoo': { name: 'XOR Texture Zoo', code: shaderXorTextureZoo },
+    'plasma': { name: 'Plasma', code: shaderPlasma },
+    'metaballs': { name: 'Metaballs', code: shaderMetaballs },
+    'voxelRaycaster': { name: 'Voxel Raycaster', code: shaderVoxelRaycaster },
     'flagshipSdfScene': { name: 'Raymarched SDF Scene', code: shaderFlagshipSdfScene },
     'flagshipMandelbrot': { name: 'Deep Mandelbrot Zoom', code: shaderFlagshipMandelbrot },
     'flagshipClouds': { name: 'Volumetric Clouds', code: shaderFlagshipClouds },
