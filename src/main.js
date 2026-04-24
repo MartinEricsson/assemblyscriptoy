@@ -250,6 +250,11 @@ window.loadDemo = function (demoName) {
         select.value = demoName;
     }
 
+    // Highlight active item in the brutalist sidebar
+    document.querySelectorAll('.demo-item').forEach(el => {
+        el.classList.toggle('active', el.dataset.demo === demoName);
+    });
+
     // Update source
     currentDemo = demoName;
     currentSource = demo.code;
@@ -284,6 +289,8 @@ window.compileAndRun = async function () {
     // Stop any existing animation
     stopAnimation();
     const sessionId = ++currentSessionId;
+    setStatusChip('COMPILING', 'compiling');
+    setStatusMode(renderMode);
 
     try {
         status.innerHTML = '<span class="output">Compiling AS → Wasm...</span>';
@@ -478,22 +485,30 @@ window.compileAndRun = async function () {
             }
 
             // Update status sparingly
-            if (frameCount > 0 && frameCount % 120 === 0) {
+            if (frameCount > 0 && frameCount % 30 === 0) {
                 const elapsed = (performance.now() - startTime) / 1000.0;
-                const fps = (frameCount / elapsed).toFixed(1);
-                status.textContent = 'Animating (' + renderMode.toUpperCase() + ') | FPS: ' + fps + ' | Frame: ' + frameCount;
+                const fpsVal = (frameCount / elapsed).toFixed(1);
+                const fpsEl = document.getElementById('statusFps');
+                if (fpsEl) fpsEl.textContent = fpsVal + ' FPS';
+                if (frameCount % 120 === 0) {
+                    status.textContent = 'Animating · frame ' + frameCount;
+                }
             }
         };
 
         isAnimating = true;
-        stopBtn.style.display = 'inline-block';
+        stopBtn.style.display = 'inline-flex';
         compileRunBtn.disabled = false;
+        setStatusChip('RUNNING', 'running');
+        const meta = document.getElementById('canvasMeta');
+        if (meta) meta.textContent = `256×256 · ${renderMode.toUpperCase()}`;
 
         // results already populated with detailed compiler output above
 
         animationFrameId = requestAnimationFrame(animate);
 
     } catch (error) {
+        setStatusChip('ERROR', 'error');
         status.innerHTML = `<span class="error">Compilation/Execution Error. See Compiler Results.</span>`;
         // Prepend the error to any existing compiler diagnostics already rendered
         const existingHTML = results.innerHTML || '';
@@ -515,6 +530,11 @@ window.stopAnimation = function () {
     isAnimating = false;
     document.getElementById('stopBtn').style.display = 'none';
     document.getElementById('status').innerHTML = '<span class="output">⏹ Stopped</span>';
+    setStatusChip('STOPPED', 'stopped');
+    const fps = document.getElementById('statusFps');
+    if (fps) fps.textContent = '-- FPS';
+    const meta = document.getElementById('canvasMeta');
+    if (meta) meta.textContent = '256×256 · IDLE';
 };
 
 // Cleanup on page unload
@@ -529,3 +549,95 @@ window.addEventListener('beforeunload', async () => {
 window.setTimeout(() => {
     loadDemo('flagshipSdfScene');
 }, 100);
+
+// ── Shell interactions: status chip, sidebar, drawer, shortcuts ──
+
+function setStatusChip(label, state) {
+    const chip = document.getElementById('statusChip');
+    if (!chip) return;
+    chip.textContent = label;
+    if (state) chip.dataset.state = state;
+    else delete chip.dataset.state;
+}
+
+function setStatusMode(mode) {
+    const el = document.getElementById('statusMode');
+    if (el) el.textContent = (mode || '').toUpperCase();
+}
+
+// Sidebar demo buttons — bridge to legacy <select id="demoSelect">
+document.querySelectorAll('.demo-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const name = btn.dataset.demo;
+        if (name) loadDemo(name);
+        closeDrawer();
+    });
+});
+
+// Render mode select keeps the status bar in sync
+const renderModeEl = document.getElementById('renderMode');
+if (renderModeEl) {
+    setStatusMode(renderModeEl.value);
+    renderModeEl.addEventListener('change', e => setStatusMode(e.target.value));
+}
+
+// ── Mobile drawer ────────────────────────────────────────────
+const drawerToggle = document.getElementById('drawerToggle');
+const sidebar = document.getElementById('sidebar');
+const drawerScrim = document.getElementById('drawerScrim');
+
+function openDrawer() {
+    if (!sidebar) return;
+    sidebar.classList.add('open');
+    if (drawerScrim) drawerScrim.classList.add('open');
+    if (drawerToggle) drawerToggle.setAttribute('aria-expanded', 'true');
+}
+function closeDrawer() {
+    if (!sidebar) return;
+    sidebar.classList.remove('open');
+    if (drawerScrim) drawerScrim.classList.remove('open');
+    if (drawerToggle) drawerToggle.setAttribute('aria-expanded', 'false');
+}
+if (drawerToggle) {
+    drawerToggle.addEventListener('click', () => {
+        const open = sidebar && sidebar.classList.contains('open');
+        if (open) closeDrawer(); else openDrawer();
+    });
+}
+if (drawerScrim) drawerScrim.addEventListener('click', closeDrawer);
+
+// ── Keyboard shortcuts ───────────────────────────────────────
+const tabOrder = ['as', 'wat', 'wgsl', 'results', 'readme'];
+document.addEventListener('keydown', (e) => {
+    const mod = e.metaKey || e.ctrlKey;
+
+    // ⌘/Ctrl+Enter — compile & run
+    if (mod && e.key === 'Enter') {
+        e.preventDefault();
+        compileAndRun();
+        return;
+    }
+    // ⌘/Ctrl+. — stop
+    if (mod && e.key === '.') {
+        e.preventDefault();
+        stopAnimation();
+        return;
+    }
+    // Esc — close drawer
+    if (e.key === 'Escape' && sidebar && sidebar.classList.contains('open')) {
+        e.preventDefault();
+        closeDrawer();
+        return;
+    }
+    // 1–5 tab switch — only when not typing in the editor / form field
+    const t = e.target;
+    const isTyping = t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT' || t.isContentEditable);
+    if (!isTyping && !mod && /^[1-5]$/.test(e.key)) {
+        e.preventDefault();
+        switchTab(tabOrder[parseInt(e.key, 10) - 1]);
+    }
+});
+
+// Initial chip state
+setStatusChip('READY', 'ready');
+

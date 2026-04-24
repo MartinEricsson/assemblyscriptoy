@@ -4,124 +4,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AssemblyScript Toy</title>
+    <meta name="color-scheme" content="dark">
+    <title>AssemblyScriptToy // Gasm Playground</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Black+Ops+One&display=swap" rel="stylesheet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=JetBrains+Mono:wght@400;500;700&display=swap"
+        rel="stylesheet" />
     <link rel="stylesheet" href="/src/style.css" />
 </head>
 
 <body>
-    <div class="header-section">
-        <h1>AssemblyScriptToy</h1>
-        <div class="header-checker"></div>
-    </div>
-
-    <div class="content-wrapper">
-        <div class="main-layout" style="display: flex; flex-wrap: wrap; gap: 20px;">
-            <!-- Output container -->
-            <div style="flex: 0 0 auto;">
-                <canvas id="canvas" width="256" height="256"
-                    style="border: 2px solid #4ec9b0; image-rendering: pixelated; width: 512px; height: 512px; display: block; will-change: contents; contain: strict;"></canvas>
+    <div class="app-shell">
+        <!-- ─── APPBAR ────────────────────────────────────────────── -->
+        <header class="appbar">
+            <div class="appbar-left">
+                <button class="drawer-toggle" id="drawerToggle" aria-label="Toggle demo list" aria-expanded="false"
+                    aria-controls="sidebar">
+                    <span></span><span></span><span></span>
+                </button>
+                <div class="logo">
+                    <span class="logo-mark">AS/</span><span class="logo-word">ASSEMBLY<span
+                            class="logo-slash">/</span>SCRIPT<span class="logo-dot">·</span>TOY</span>
+                </div>
+                <span class="appbar-subtitle">gasm playground // as → wasm → wgsl</span>
             </div>
 
-            <!-- Tabs container -->
-            <div style="flex: 1 1 512px; display: flex; flex-direction: column; min-width: 300px; height: 516px;">
-                <div class="tab-headers" style="display: flex; gap: 2px;">
-                    <button class="tab-btn active" onclick="switchTab('as')" id="btn-as">AS Source</button>
-                    <button class="tab-btn" onclick="switchTab('wat')" id="btn-wat">WAT</button>
-                    <button class="tab-btn" onclick="switchTab('wgsl')" id="btn-wgsl">WGSL</button>
-                    <button class="tab-btn" onclick="switchTab('results')" id="btn-results">Compiler Results</button>
-                    <button class="tab-btn" onclick="switchTab('readme')" id="btn-readme">README</button>
+            <div class="appbar-right">
+                <div class="mode-toggle" role="group" aria-label="Render mode">
+                    <label for="renderMode" class="kbd-label">MODE</label>
+                    <select id="renderMode" class="select">
+                        <option value="gpu">GPU · Gasm</option>
+                        <option value="cpu">CPU · Wasm</option>
+                    </select>
                 </div>
-                <div class="tab-content"
-                    style="flex: 1; min-height: 0; background: #1e1e1e; border: 1px solid #4ec9b0; padding: 0; display: flex; flex-direction: column; border-radius: 0 4px 4px 4px; overflow: hidden; position: relative;">
-                    <div id="tab-as" class="as-editor-wrapper">
-                        <div id="asLineNumbers"></div>
-                        <div class="as-editor-area">
-                            <pre id="asHighlightPre" class="language-typescript"><code class="language-typescript" id="asSourceEditorCode"></code></pre>
-                            <textarea id="asSourceEditor" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"></textarea>
-                        </div>
+                <button id="compileRunBtn" class="btn btn-primary" onclick="compileAndRun()"
+                    title="Compile &amp; Run (⌘↵ / Ctrl+↵)">
+                    <span class="btn-bracket">[</span><span class="btn-label">▶ COMPILE &amp; RUN</span><span
+                        class="btn-bracket">]</span>
+                </button>
+                <button id="stopBtn" class="btn btn-danger" onclick="stopAnimation()" style="display: none;"
+                    title="Stop (⌘. / Ctrl+.)">
+                    <span class="btn-bracket">[</span><span class="btn-label">■ STOP</span><span
+                        class="btn-bracket">]</span>
+                </button>
+                <button class="btn btn-ghost btn-icon" onclick="document.getElementById('canvas').requestFullscreen()"
+                    title="Fullscreen" aria-label="Fullscreen canvas">⛶</button>
+            </div>
+        </header>
+        <div class="appbar-checker" aria-hidden="true"></div>
+
+        <!-- ─── SIDEBAR ───────────────────────────────────────────── -->
+        <nav class="sidebar" id="sidebar" aria-label="Demo library">
+            <div class="sidebar-header">
+                <span class="section-rule">── DEMOS ──────────</span>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-label">getting started</div>
+                <ul class="demo-list" role="listbox" aria-label="Getting started demos">
+                    <li><button class="demo-item" data-demo="starter" role="option"><span
+                                class="demo-idx">01</span><span class="demo-name">STARTER TEMPLATE</span></button></li>
+                </ul>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-label">intermediate</div>
+                <ul class="demo-list" role="listbox" aria-label="Intermediate demos">
+                    <li><button class="demo-item" data-demo="xorTextureZoo" role="option"><span
+                                class="demo-idx">02</span><span class="demo-name">XOR TEXTURE ZOO</span></button></li>
+                    <li><button class="demo-item" data-demo="plasma" role="option"><span
+                                class="demo-idx">03</span><span class="demo-name">PLASMA</span></button></li>
+                    <li><button class="demo-item" data-demo="metaballs" role="option"><span
+                                class="demo-idx">04</span><span class="demo-name">METABALLS</span></button></li>
+                    <li><button class="demo-item" data-demo="voxelRaycaster" role="option"><span
+                                class="demo-idx">05</span><span class="demo-name">VOXEL RAYCASTER</span></button></li>
+                </ul>
+            </div>
+            <div class="sidebar-group">
+                <div class="sidebar-group-label">advanced</div>
+                <ul class="demo-list" role="listbox" aria-label="Advanced demos">
+                    <li><button class="demo-item" data-demo="flagshipSdfScene" role="option"><span
+                                class="demo-idx">06</span><span class="demo-name">RAYMARCHED SDF SCENE</span></button>
+                    </li>
+                    <li><button class="demo-item" data-demo="flagshipMandelbrot" role="option"><span
+                                class="demo-idx">07</span><span class="demo-name">DEEP MANDELBROT ZOOM</span></button>
+                    </li>
+                    <li><button class="demo-item" data-demo="flagshipClouds" role="option"><span
+                                class="demo-idx">08</span><span class="demo-name">VOLUMETRIC CLOUDS</span></button></li>
+                    <li><button class="demo-item" data-demo="flagshipFire" role="option"><span
+                                class="demo-idx">09</span><span class="demo-name">TURBULENT FIRE</span></button></li>
+                    <li><button class="demo-item" data-demo="cornellBoxGi" role="option"><span
+                                class="demo-idx">10</span><span class="demo-name">CORNELL BOX · PATH TRACING</span></button>
+                    </li>
+                </ul>
+            </div>
+            <div class="sidebar-footer">
+                <div class="kbd-hint"><span class="kbd">⌘</span><span class="kbd">↵</span> run &nbsp; <span
+                        class="kbd">⌘</span><span class="kbd">.</span> stop</div>
+                <div class="kbd-hint"><span class="kbd">1</span>–<span class="kbd">5</span> switch tab</div>
+            </div>
+        </nav>
+        <div class="drawer-scrim" id="drawerScrim" aria-hidden="true"></div>
+
+        <!-- ─── CANVAS PANEL ──────────────────────────────────────── -->
+        <section class="canvas-panel panel" aria-label="Render output">
+            <div class="panel-header">
+                <span class="section-rule">── OUTPUT ─────────</span>
+                <span class="panel-meta" id="canvasMeta">256×256 · IDLE</span>
+            </div>
+            <div class="canvas-stage">
+                <canvas id="canvas" width="256" height="256" aria-label="Shader output canvas"></canvas>
+                <div class="canvas-scanlines" aria-hidden="true"></div>
+            </div>
+        </section>
+
+        <!-- ─── EDITOR PANEL ──────────────────────────────────────── -->
+        <section class="editor-panel panel" aria-label="Source editor and output">
+            <div class="panel-header editor-header">
+                <div class="tab-headers" role="tablist">
+                    <button class="tab-btn active" onclick="switchTab('as')" id="btn-as" role="tab" aria-selected="true">AS
+                        SOURCE</button>
+                    <button class="tab-btn" onclick="switchTab('wat')" id="btn-wat" role="tab">WAT</button>
+                    <button class="tab-btn" onclick="switchTab('wgsl')" id="btn-wgsl" role="tab">WGSL</button>
+                    <button class="tab-btn" onclick="switchTab('results')" id="btn-results" role="tab">RESULTS</button>
+                    <button class="tab-btn" onclick="switchTab('readme')" id="btn-readme" role="tab">README</button>
+                </div>
+            </div>
+            <div class="tab-content">
+                <div id="tab-as" class="as-editor-wrapper" role="tabpanel" aria-labelledby="btn-as">
+                    <div id="asLineNumbers"></div>
+                    <div class="as-editor-area">
+                        <pre id="asHighlightPre"
+                            class="language-typescript"><code class="language-typescript" id="asSourceEditorCode"></code></pre>
+                        <textarea id="asSourceEditor" spellcheck="false" autocomplete="off" autocorrect="off"
+                            autocapitalize="off"></textarea>
                     </div>
-                    <div id="tab-wat" class="readonly-tab-wrapper" style="display: none;">
-                        <div id="watLineNumbers" class="readonly-line-numbers"></div>
-                        <pre id="watCodePre" class="language-wasm readonly-code-pre"><code class="language-wasm" id="watCodeElement"></code></pre>
-                    </div>
-                    <div id="tab-wgsl" class="readonly-tab-wrapper" style="display: none;">
-                        <div id="wgslLineNumbers" class="readonly-line-numbers"></div>
-                        <pre id="wgslCodePre" class="language-wgsl readonly-code-pre"><code class="language-wgsl" id="wgslCodeElement"></code></pre>
-                    </div>
-                    <div id="tab-results" style="flex: 1; overflow: auto; display: none; padding: 15px;">
-                        <div id="results" style="margin: 0;"></div>
-                    </div>
-                    <div id="tab-readme"
-                        style="flex: 1; overflow: auto; display: none; padding: 15px; color: #d4d4d4; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.6;">
-                        <h2 style="color: #4ec9b0; margin-top: 0;">How to write AssemblyScript for Gasm</h2>
-                        <h3 style="color: #4ec9b0;">1. Export a main function</h3>
-                        <p>Export a function named <code>main()</code>. The Gasm compiler will automatically wrap it
-                            with a <code>@compute</code> shader entry point.</p>
-                        <pre style="background: #1e1e1e; padding: 10px; border-radius: 4px; border: 1px solid #333;"><code style="color: #CE9178;">export function main(): void {
+                </div>
+                <div id="tab-wat" class="readonly-tab-wrapper" style="display: none;" role="tabpanel"
+                    aria-labelledby="btn-wat">
+                    <div id="watLineNumbers" class="readonly-line-numbers"></div>
+                    <pre id="watCodePre"
+                        class="language-wasm readonly-code-pre"><code class="language-wasm" id="watCodeElement"></code></pre>
+                </div>
+                <div id="tab-wgsl" class="readonly-tab-wrapper" style="display: none;" role="tabpanel"
+                    aria-labelledby="btn-wgsl">
+                    <div id="wgslLineNumbers" class="readonly-line-numbers"></div>
+                    <pre id="wgslCodePre"
+                        class="language-wgsl readonly-code-pre"><code class="language-wgsl" id="wgslCodeElement"></code></pre>
+                </div>
+                <div id="tab-results" class="results-pane" style="display: none;" role="tabpanel"
+                    aria-labelledby="btn-results">
+                    <div id="results"></div>
+                </div>
+                <div id="tab-readme" class="readme-pane" style="display: none;" role="tabpanel"
+                    aria-labelledby="btn-readme">
+                    <div class="readme-inner">
+                        <h2><span class="section-rule">── README ─────────</span></h2>
+                        <h3>&gt; 01 · EXPORT A MAIN FUNCTION</h3>
+                        <p>Export a function named <code>main()</code>. The Gasm compiler wraps it in a
+                            <code>@compute</code> shader entry point.</p>
+                        <pre class="code-block"><code>export function main(): void {
   // your code here
 }</code></pre>
-                        <h3 style="color: #4ec9b0;">2. Memory Access</h3>
+                        <h3>&gt; 02 · MEMORY ACCESS</h3>
                         <p>Use <code>load&lt;T&gt;(offset)</code> and <code>store&lt;T&gt;(offset, value)</code> to
                             interact with the single memory buffer shared with the GPU.</p>
-                        <pre style="background: #1e1e1e; padding: 10px; border-radius: 4px; border: 1px solid #333;"><code style="color: #CE9178;">const count = load&lt;i32&gt;(0);
+                        <pre class="code-block"><code>const count = load&lt;i32&gt;(0);
 store&lt;i32&gt;(4, count * 2);</code></pre>
-                        <h3 style="color: #4ec9b0;">3. Supported Types</h3>
-                        <p>Currently, Gasm supports <code>i32</code>, <code>u32</code>, <code>f32</code>, and scalar
-                            math operations. <code>i64</code> and <code>f64</code> are demoted to 32-bit equivalents.
-                        </p>
-                        <h3 style="color: #4ec9b0;">4. Advanced Memory Layout</h3>
+                        <h3>&gt; 03 · SUPPORTED TYPES</h3>
+                        <p>Gasm supports <code>i32</code>, <code>u32</code>, <code>f32</code>, and scalar math.
+                            <code>i64</code> and <code>f64</code> are demoted to 32-bit equivalents.</p>
+                        <h3>&gt; 04 · ADVANCED MEMORY LAYOUT</h3>
                         <p>The first elements of memory can be used for passing uniforms like frame count or
                             configuration flags.</p>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <!-- Control panel -->
-        <div class="control-panel section" style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
-            <button id="compileRunBtn" onclick="compileAndRun()">▶ Compile & Run</button>
-            <button id="stopBtn" onclick="stopAnimation()" style="display: none;">⏹ Stop</button>
-            <button onclick="document.getElementById('canvas').requestFullscreen()"
-                style="background: #333; border: 1px solid #4ec9b0; font-size: 18px; padding: 6px 12px;"
-                title="Fullscreen">⛶</button>
-            <div id="status" style="flex: 1; font-size: 14px;"></div>
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <label for="renderMode">Mode:</label>
-                <select id="renderMode"
-                    style="padding: 5px; background: #333; color: white; border: 1px solid #4ec9b0; border-radius: 4px;">
-                    <option value="gpu">GPU (Gasm)</option>
-                    <option value="cpu">CPU (Wasm)</option>
-                </select>
-            </div>
-        </div>
+        <!-- ─── STATUSBAR ─────────────────────────────────────────── -->
+        <footer class="statusbar" role="status" aria-live="polite">
+            <span class="status-chip" id="statusChip">READY</span>
+            <span id="status" class="status-text">Idle — pick a demo to start.</span>
+            <span class="status-seg" id="statusMode">GPU</span>
+            <span class="status-seg" id="statusFps">-- FPS</span>
+            <span class="status-seg status-caret" aria-hidden="true">█</span>
+        </footer>
 
-        <!-- Demo selector -->
-        <div class="section" style="margin-top: 20px;">
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <h2 style="margin: 0;">Select Demo:</h2>
-                <select id="demoSelect" onchange="loadDemo(this.value)"
-                    style="padding: 8px; background: #333; color: white; border: 1px solid #4ec9b0; border-radius: 4px; font-size: 16px; flex-grow: 1;">
-                    <optgroup label="Getting Started">
-                        <option value="starter">Starter Template</option>
-                    </optgroup>
-                    <optgroup label="Intermediate Demos">
-                        <option value="xorTextureZoo">XOR Texture Zoo</option>
-                        <option value="plasma">Plasma</option>
-                        <option value="metaballs">Metaballs</option>
-                        <option value="voxelRaycaster">Voxel Raycaster</option>
-                    </optgroup>
-                    <optgroup label="Advanced Demos">
-                        <option value="flagshipSdfScene">Raymarched SDF Scene</option>
-                        <option value="flagshipMandelbrot">Deep Mandelbrot Zoom</option>
-                        <option value="flagshipClouds">Volumetric Clouds</option>
-                        <option value="flagshipFire">Turbulent Fire</option>
-                        <option value="cornellBoxGi">Cornell Box (Path Tracing)</option>
-                    </optgroup>
-                </select>
-            </div>
-        </div>
+        <!-- Hidden-but-functional legacy control (bridged from sidebar) -->
+        <select id="demoSelect" class="visually-hidden" onchange="loadDemo(this.value)" aria-hidden="true" tabindex="-1">
+            <option value="starter">Starter Template</option>
+            <option value="xorTextureZoo">XOR Texture Zoo</option>
+            <option value="plasma">Plasma</option>
+            <option value="metaballs">Metaballs</option>
+            <option value="voxelRaycaster">Voxel Raycaster</option>
+            <option value="flagshipSdfScene">Raymarched SDF Scene</option>
+            <option value="flagshipMandelbrot">Deep Mandelbrot Zoom</option>
+            <option value="flagshipClouds">Volumetric Clouds</option>
+            <option value="flagshipFire">Turbulent Fire</option>
+            <option value="cornellBoxGi">Cornell Box (Path Tracing)</option>
+        </select>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
