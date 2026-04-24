@@ -12,7 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@gasm-compiler/core": "^0.2.0",
+    "@gasm-compiler/core": "^0.2.2",
     "assemblyscript": "^0.28.9"
   },
   "devDependencies": {
