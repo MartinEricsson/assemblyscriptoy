@@ -10,6 +10,11 @@ import plasmaRaw from './shaders/plasma.as?raw';
 import metaballsRaw from './shaders/metaballs.as?raw';
 import voxelRaycasterRaw from './shaders/voxel_raycaster.as?raw';
 
+// === Persistent memory demos ===
+import persistentLifeRaw from './shaders/persistent_life.as?raw';
+import persistentHeatRaw from './shaders/persistent_heat.as?raw';
+import persistentCyclicRaw from './shaders/persistent_cyclic.as?raw';
+
 // === Flagship demos (f32, GPU-heavy) ===
 import flagshipSdfSceneRaw from './shaders/flagship_sdf_scene.as?raw';
 import flagshipMandelbrotRaw from './shaders/flagship_mandelbrot.as?raw';
@@ -28,6 +33,11 @@ export const shaderXorTextureZoo = xorTextureZooRaw;
 export const shaderPlasma = plasmaRaw;
 export const shaderMetaballs = metaballsRaw;
 export const shaderVoxelRaycaster = voxelRaycasterRaw;
+
+// === Persistent memory demos ===
+export const shaderPersistentLife = persistentLifeRaw;
+export const shaderPersistentHeat = persistentHeatRaw;
+export const shaderPersistentCyclic = persistentCyclicRaw;
 
 // === Getting started ===
 export const shaderStarter = starterRaw;

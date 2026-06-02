@@ -122,7 +122,7 @@ Both **GPU mode** (WebGPU via the full Gasm pipeline) and **CPU mode** (direct W
 The app uses a two-phase animation API designed for zero-JS-allocation per frame:
 
 ```typescript
-import { BrowserGPUExecutor } from '@gasm-compiler/core/browser';
+import { BrowserGPUExecutor } from './src/browser-gpu-executor.js';
 
 const executor = new BrowserGPUExecutor();
 
@@ -130,13 +130,32 @@ const executor = new BrowserGPUExecutor();
 // buffers, bind groups, and the staging buffer.
 const wgCount = [Math.ceil(256 * 256 / 64), 1, 1];
 const memorySize = 1024 * 1024; // 1 MB shared memory buffer
+const inputBytes = 16;
+const outputBytes = 256 * 256 * 3 * 4;
 const memBuf = new Int32Array(memorySize / 4);
-await executor.prepareAnimation(wgslCode, memBuf, 'i32', memorySize, 'i32', wgCount);
+await executor.prepareAnimation(wgslCode, memBuf, 'i32', memorySize, 'i32', wgCount, {
+    layout: {
+        inputs: { byteOffset: 0, byteLength: inputBytes },
+        outputs: { byteOffset: inputBytes, byteLength: outputBytes },
+        state: {
+            byteOffset: inputBytes + outputBytes,
+            byteLength: memorySize - inputBytes - outputBytes,
+        },
+    },
+});
 
-// Phase 2 — per-frame: uploads CPU data, dispatches GPU, reads back result.
-// No Maps, no new arrays, no bind-group recreation per frame.
+// Phase 2 — per-frame: uploads only inputs, dispatches GPU, reads back outputs.
 memBuf[0] = timeAsI32; // write frame time before each dispatch
 const result = await executor.executeFrame(memBuf);
+
+// Optional: submit this frame while returning the previous completed frame.
+const previous = await executor.executeFrame(memBuf, { pipelined: true });
+if (previous.outputs) render(previous.outputs, previous.frameIndex);
+
+// Optional host-side memory control for resets, seeds, and debugging.
+executor.resetMemory();
+executor.writeMemory(inputBytes + outputBytes, initialState);
+const snapshot = await executor.readMemory(inputBytes + outputBytes, 4096);
 
 // Cleanup
 await executor.destroy();

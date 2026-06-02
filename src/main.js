@@ -1,4 +1,5 @@
-import { BrowserGPUExecutor, compileWithDiagnostics } from '@gasm-compiler/core/browser';
+import { compileWithDiagnostics } from '@gasm-compiler/core/browser';
+import { BrowserGPUExecutor } from './browser-gpu-executor.js';
 import { wgslCode as initialWGSL } from '../build/shader.js';
 import { compileString } from 'assemblyscript/dist/asc.js';
 import {
@@ -11,6 +12,9 @@ import {
     shaderPlasma,
     shaderMetaballs,
     shaderVoxelRaycaster,
+    shaderPersistentLife,
+    shaderPersistentHeat,
+    shaderPersistentCyclic,
     shaderStarter
 } from '../shader-source.js';
 
@@ -20,6 +24,9 @@ const demoLibrary = {
     'plasma': { name: 'Plasma', code: shaderPlasma },
     'metaballs': { name: 'Metaballs', code: shaderMetaballs },
     'voxelRaycaster': { name: 'Voxel Raycaster', code: shaderVoxelRaycaster },
+    'persistentLife': { name: 'Persistent Life', code: shaderPersistentLife },
+    'persistentHeat': { name: 'Persistent Heat Diffusion', code: shaderPersistentHeat },
+    'persistentCyclic': { name: 'Persistent Cyclic Automata', code: shaderPersistentCyclic },
     'flagshipSdfScene': { name: 'Raymarched SDF Scene', code: shaderFlagshipSdfScene },
     'flagshipMandelbrot': { name: 'Deep Mandelbrot Zoom', code: shaderFlagshipMandelbrot },
     'flagshipClouds': { name: 'Volumetric Clouds', code: shaderFlagshipClouds },
@@ -353,10 +360,13 @@ window.compileAndRun = async function () {
             executor = new BrowserGPUExecutor();
 
             // Prepare the animation fast path — compile pipeline, allocate
-            // GPU buffers, bind group, staging buffer ONCE. After this call,
-            // executeFrame() does zero JS object allocations per frame.
+            // GPU buffers, bind group, staging buffer ONCE. The GPU memory
+            // buffer remains authoritative between frames; only the small
+            // input region is uploaded and the pixel output region is read back.
             const wgCount = [Math.ceil(256 * 256 / 64), 1, 1];
             const memorySize = 1024 * 1024;
+            const inputBytes = 16;
+            const outputBytes = 256 * 256 * 3 * 4;
             const memBuf = new Int32Array(memorySize / 4);
             await executor.prepareAnimation(
                 currentWGSL,
@@ -365,6 +375,16 @@ window.compileAndRun = async function () {
                 memorySize,
                 'i32',
                 wgCount,
+                {
+                    layout: {
+                        inputs: { byteOffset: 0, byteLength: inputBytes },
+                        outputs: { byteOffset: inputBytes, byteLength: outputBytes },
+                        state: {
+                            byteOffset: inputBytes + outputBytes,
+                            byteLength: memorySize - inputBytes - outputBytes,
+                        },
+                    },
+                },
             );
         } else {
             status.innerHTML = '<span class="output">Instantiating Wasm for CPU...</span>';
@@ -422,8 +442,7 @@ window.compileAndRun = async function () {
         let animError = null;
 
         // Fast pixel copy: pack 3 × i32 (R,G,B) into 1 × u32 (ABGR).
-        function copyPixels(resultBuffer) {
-            let srcIdx = 4; // skip time at i32 offset 0
+        function copyPixels(resultBuffer, srcIdx = 4) {
             for (let i = 0; i < totalPixels; i++) {
                 pixelsU32[i] = 0xFF000000
                     | ((resultBuffer[srcIdx + 2] & 0xFF) << 16)
@@ -441,7 +460,7 @@ window.compileAndRun = async function () {
                 // recreation, no new arrays, no template-literal keys.
                 const result = await executor.executeFrame(memoryBufferI32);
                 if (sessionId !== currentSessionId) return;
-                copyPixels(result);
+                copyPixels(result, 0);
                 hasNewFrame = true;
                 frameCount++;
             } catch (error) {

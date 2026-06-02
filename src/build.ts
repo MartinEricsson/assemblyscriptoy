@@ -2,7 +2,10 @@ import { execSync } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { compile } from "@gasm-compiler/core";
+import { compile, setBrowserCompilerBackend } from "@gasm-compiler/core/browser";
+
+// 0.3.0 Node entry resolves Rust wasm to a monorepo dev path; use the TS backend here.
+setBrowserCompilerBackend("typescript");
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
