@@ -1,0 +1,7 @@
+packages:
+  - .
+
+# @gasm-compiler/core is a first-party dependency we publish ourselves; allow
+# immediate installs before pnpm's default 24h minimumReleaseAge cooldown.
+minimumReleaseAgeExclude:
+  - '@gasm-compiler/core'
