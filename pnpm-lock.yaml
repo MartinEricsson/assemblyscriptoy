@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@gasm-compiler/core':
-        specifier: ^0.4.0
-        version: 0.4.0(typescript@5.9.3)
+        specifier: ^0.5.0
+        version: 0.5.0(typescript@5.9.3)
       assemblyscript:
         specifier: ^0.28.9
         version: 0.28.9
@@ -318,8 +318,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@gasm-compiler/core@0.4.0':
-    resolution: {integrity: sha512-YSnxzceqZBeUITLexIR7hA6gXJCJUD02a/kAcUEV5B7B1sIB48nLRgmsl2fNcoNenVqg7JlfLjP1dSo/1g2G7g==}
+  '@gasm-compiler/core@0.5.0':
+    resolution: {integrity: sha512-8+6rONBqwmlqUE6pBVsm6R+5OQjTJ3T6BKgZdRIpKRKBpc/UcbtJyDuRB02ZX/Ao115vD8DXAH+ccapdN6UjWQ==}
     peerDependencies:
       typescript: ^5.0.0
 
@@ -699,7 +699,7 @@ snapshots:
   '@esbuild/win32-x64@0.27.3':
     optional: true
 
-  '@gasm-compiler/core@0.4.0(typescript@5.9.3)':
+  '@gasm-compiler/core@0.5.0(typescript@5.9.3)':
     dependencies:
       typescript: 5.9.3
       wabt: 1.0.39

@@ -1,4 +1,4 @@
-import { compileWithDiagnostics } from '@gasm-compiler/core/browser';
+import { compileGasmIntegrator } from './gasm-integrator.js';
 import { BrowserGPUExecutor } from './browser-gpu-executor.js';
 import { wgslCode as initialWGSL } from '../build/shader.js';
 import { compileString } from 'assemblyscript/dist/asc.js';
@@ -96,6 +96,17 @@ function buildCompilerResultsHTML({ asStderr, asBinarySize, gasmResult, renderMo
             }
         }
 
+        // Advisories (integrator-mode decisions from Gasm 0.5+)
+        const advisories = diag.advisories ?? [];
+        if (advisories.length > 0) {
+            html += `<div style="color: #9cdcfe; margin-top: 8px;"><strong>Advisories (${advisories.length}):</strong></div>`;
+            for (const a of advisories) {
+                html += `<div style="color: #9cdcfe; margin: 2px 0 2px 12px;">ℹ [${esc(a.code)}] ${esc(a.message)}`;
+                if (a.functionName) html += ` <span style="color: #888;">(in ${esc(a.functionName)})</span>`;
+                html += `</div>`;
+            }
+        }
+
         // Demotions
         if (diag.demotions.length > 0) {
             html += `<div style="color: #ce9178; margin-top: 8px;"><strong>Demotions (${diag.demotions.length}):</strong></div>`;
@@ -121,7 +132,7 @@ function buildCompilerResultsHTML({ asStderr, asBinarySize, gasmResult, renderMo
         }
 
         // Clean compile summary
-        if (gasmResult.ok && diag.errors.length === 0 && diag.warnings.length === 0 && diag.demotions.length === 0) {
+        if (gasmResult.ok && diag.errors.length === 0 && diag.warnings.length === 0 && advisories.length === 0 && diag.demotions.length === 0) {
             html += `<div style="color: #6a9955; margin-top: 4px;">No warnings or demotions</div>`;
         }
 
@@ -332,11 +343,7 @@ window.compileAndRun = async function () {
         if (renderMode === 'gpu') {
             status.innerHTML = '<span class="output">Compiling Wasm → WGSL...</span>';
 
-            const result = compileWithDiagnostics(binary, {
-                optimize: true,
-                demotionPolicy: { i64: "allow-lossy", f64: "allow" },
-                sourceMapping: "detailed"  // Options: "minimal", "normal", "detailed", "verbose"
-            });
+            const result = compileGasmIntegrator(binary);
 
             // Populate Compiler Results with both AS and Gasm output
             results.innerHTML = buildCompilerResultsHTML({ asStderr, asBinarySize, gasmResult: result, renderMode });

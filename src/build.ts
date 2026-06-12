@@ -2,9 +2,12 @@ import { execSync } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { compile, setBrowserCompilerBackend } from "@gasm-compiler/core/browser";
+import {
+  compileGasmIntegrator,
+  DEFAULT_GASM_COMPILE_OPTIONS,
+} from "./gasm-integrator.js";
+import { setBrowserCompilerBackend } from "@gasm-compiler/core/browser";
 
-// 0.3.0 Node entry resolves Rust wasm to a monorepo dev path; use the TS backend here.
 setBrowserCompilerBackend("typescript");
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,10 +32,20 @@ console.log("  → Compiling Wasm to WGSL with Gasm...");
 const wasmPath = join(__dirname, "..", "build", "shader.wasm");
 const wasmBytes = readFileSync(wasmPath);
 
-const wgslCode = compile(wasmBytes, {
-  optimize: true,
-  verbose: false,
+const result = compileGasmIntegrator(wasmBytes, {
+  ...DEFAULT_GASM_COMPILE_OPTIONS,
+  sourceMapping: "normal",
 });
+
+if (!result.ok) {
+  const errors = result.diagnostics.errors
+    .map((e) => `${e.code}: ${e.message}`)
+    .join("\n");
+  console.error("❌ Gasm compilation failed:\n" + errors);
+  process.exit(1);
+}
+
+const wgslCode = result.wgsl;
 
 // Step 3: Write WGSL output
 const wgslPath = join(__dirname, "..", "build", "shader.wgsl");
