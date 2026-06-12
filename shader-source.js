@@ -1,43 +1,31 @@
-// Shader source aggregator - imports individual shader files as raw text
-// Each shader is stored in ./shaders/<name>.as
+// Demo catalog — shader sources are loaded on demand to keep the initial bundle small.
 
-// === Getting started ===
-import starterRaw from './shaders/starter.as?raw';
+export const demoCatalog = {
+    starter: { name: 'Starter Template', load: () => import('./shaders/starter.as?raw') },
+    xorTextureZoo: { name: 'XOR Texture Zoo', load: () => import('./shaders/xor_texture_zoo.as?raw') },
+    plasma: { name: 'Plasma', load: () => import('./shaders/plasma.as?raw') },
+    metaballs: { name: 'Metaballs', load: () => import('./shaders/metaballs.as?raw') },
+    voxelRaycaster: { name: 'Voxel Raycaster', load: () => import('./shaders/voxel_raycaster.as?raw') },
+    persistentLife: { name: 'Persistent Life', load: () => import('./shaders/persistent_life.as?raw') },
+    persistentHeat: { name: 'Persistent Heat Diffusion', load: () => import('./shaders/persistent_heat.as?raw') },
+    persistentCyclic: { name: 'Persistent Cyclic Automata', load: () => import('./shaders/persistent_cyclic.as?raw') },
+    flagshipSdfScene: { name: 'Raymarched SDF Scene', load: () => import('./shaders/flagship_sdf_scene.as?raw') },
+    flagshipMandelbrot: { name: 'Deep Mandelbrot Zoom', load: () => import('./shaders/flagship_mandelbrot.as?raw') },
+    flagshipClouds: { name: 'Volumetric Clouds', load: () => import('./shaders/flagship_clouds.as?raw') },
+    flagshipFire: { name: 'Turbulent Fire', load: () => import('./shaders/flagship_fire.as?raw') },
+    cornellBoxGi: { name: 'Cornell Box (Path Tracing)', load: () => import('./shaders/cornell_box_gi.as?raw') },
+};
 
-// === Intermediate demos ===
-import xorTextureZooRaw from './shaders/xor_texture_zoo.as?raw';
-import plasmaRaw from './shaders/plasma.as?raw';
-import metaballsRaw from './shaders/metaballs.as?raw';
-import voxelRaycasterRaw from './shaders/voxel_raycaster.as?raw';
+const sourceCache = new Map();
 
-// === Persistent memory demos ===
-import persistentLifeRaw from './shaders/persistent_life.as?raw';
-import persistentHeatRaw from './shaders/persistent_heat.as?raw';
-import persistentCyclicRaw from './shaders/persistent_cyclic.as?raw';
+export async function loadDemoSource(demoId) {
+    if (sourceCache.has(demoId)) return sourceCache.get(demoId);
 
-// === Flagship demos (f32, GPU-heavy) ===
-import flagshipSdfSceneRaw from './shaders/flagship_sdf_scene.as?raw';
-import flagshipMandelbrotRaw from './shaders/flagship_mandelbrot.as?raw';
-import flagshipCloudsRaw from './shaders/flagship_clouds.as?raw';
-import flagshipFireRaw from './shaders/flagship_fire.as?raw';
-import cornellBoxGiRaw from './shaders/cornell_box_gi.as?raw';
+    const entry = demoCatalog[demoId];
+    if (!entry) throw new Error(`Unknown demo: ${demoId}`);
 
-export const shaderFlagshipSdfScene = flagshipSdfSceneRaw;
-export const shaderFlagshipMandelbrot = flagshipMandelbrotRaw;
-export const shaderFlagshipClouds = flagshipCloudsRaw;
-export const shaderFlagshipFire = flagshipFireRaw;
-export const shaderCornellBoxGi = cornellBoxGiRaw;
-
-// === Intermediate demos ===
-export const shaderXorTextureZoo = xorTextureZooRaw;
-export const shaderPlasma = plasmaRaw;
-export const shaderMetaballs = metaballsRaw;
-export const shaderVoxelRaycaster = voxelRaycasterRaw;
-
-// === Persistent memory demos ===
-export const shaderPersistentLife = persistentLifeRaw;
-export const shaderPersistentHeat = persistentHeatRaw;
-export const shaderPersistentCyclic = persistentCyclicRaw;
-
-// === Getting started ===
-export const shaderStarter = starterRaw;
+    const mod = await entry.load();
+    const code = mod.default;
+    sourceCache.set(demoId, code);
+    return code;
+}

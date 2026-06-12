@@ -1,42 +1,18 @@
-import { compileGasmIntegrator } from './gasm-integrator.js';
-import { BrowserGPUExecutor } from './browser-gpu-executor.js';
-import { wgslCode as initialWGSL } from '../build/shader.js';
-import { compileString } from 'assemblyscript/dist/asc.js';
+import { demoCatalog, loadDemoSource } from '../shader-source.js';
 import {
-    shaderFlagshipSdfScene,
-    shaderFlagshipMandelbrot,
-    shaderFlagshipClouds,
-    shaderFlagshipFire,
-    shaderCornellBoxGi,
-    shaderXorTextureZoo,
-    shaderPlasma,
-    shaderMetaballs,
-    shaderVoxelRaycaster,
-    shaderPersistentLife,
-    shaderPersistentHeat,
-    shaderPersistentCyclic,
-    shaderStarter
-} from '../shader-source.js';
+    loadAssemblyScriptCompiler,
+    loadGasmCompiler,
+    loadGPUExecutorModule,
+} from './load-compilers.js';
 
-const demoLibrary = {
-    'starter': { name: 'Starter Template', code: shaderStarter },
-    'xorTextureZoo': { name: 'XOR Texture Zoo', code: shaderXorTextureZoo },
-    'plasma': { name: 'Plasma', code: shaderPlasma },
-    'metaballs': { name: 'Metaballs', code: shaderMetaballs },
-    'voxelRaycaster': { name: 'Voxel Raycaster', code: shaderVoxelRaycaster },
-    'persistentLife': { name: 'Persistent Life', code: shaderPersistentLife },
-    'persistentHeat': { name: 'Persistent Heat Diffusion', code: shaderPersistentHeat },
-    'persistentCyclic': { name: 'Persistent Cyclic Automata', code: shaderPersistentCyclic },
-    'flagshipSdfScene': { name: 'Raymarched SDF Scene', code: shaderFlagshipSdfScene },
-    'flagshipMandelbrot': { name: 'Deep Mandelbrot Zoom', code: shaderFlagshipMandelbrot },
-    'flagshipClouds': { name: 'Volumetric Clouds', code: shaderFlagshipClouds },
+const demoLibrary = Object.fromEntries(
+    Object.entries(demoCatalog).map(([id, { name }]) => [id, { name }]),
+);
 
-    'flagshipFire': { name: 'Turbulent Fire', code: shaderFlagshipFire },
-    'cornellBoxGi': { name: 'Cornell Box (Path Tracing)', code: shaderCornellBoxGi }
-};
+const INITIAL_WGSL = '// Click Compile & Run to generate WGSL from your AssemblyScript shader.';
 
-let currentWGSL = initialWGSL;
-let currentSource = shaderStarter;
+let currentWGSL = INITIAL_WGSL;
+let currentSource = '';
 let currentDemo = 'starter';
 
 // ── Compiler results builder ─────────────────────────────────────
@@ -258,7 +234,7 @@ setEditorContent(currentSource);
 
 
 // Load demo by name
-window.loadDemo = function (demoName) {
+window.loadDemo = async function (demoName) {
     const demo = demoLibrary[demoName];
     if (!demo) return;
 
@@ -275,7 +251,7 @@ window.loadDemo = function (demoName) {
 
     // Update source
     currentDemo = demoName;
-    currentSource = demo.code;
+    currentSource = await loadDemoSource(demoName);
     setEditorContent(currentSource);
 
     // Stop animation and destroy executor before switching
@@ -313,6 +289,8 @@ window.compileAndRun = async function () {
     try {
         status.innerHTML = '<span class="output">Compiling AS → Wasm...</span>';
 
+        const { compileString } = await loadAssemblyScriptCompiler();
+
         // Compile ONCE
         const { binary, text, stderr } = await compileString(currentSource, {
             optimize: true,
@@ -342,6 +320,9 @@ window.compileAndRun = async function () {
 
         if (renderMode === 'gpu') {
             status.innerHTML = '<span class="output">Compiling Wasm → WGSL...</span>';
+
+            const { compileGasmIntegrator } = await loadGasmCompiler();
+            const { BrowserGPUExecutor } = await loadGPUExecutorModule();
 
             const result = compileGasmIntegrator(binary);
 
@@ -573,7 +554,7 @@ window.addEventListener('beforeunload', async () => {
 
 // Auto-load first demo on startup
 window.setTimeout(() => {
-    loadDemo('flagshipSdfScene');
+    loadDemo('flagshipSdfScene').catch(console.error);
 }, 100);
 
 // ── Shell interactions: status chip, sidebar, drawer, shortcuts ──

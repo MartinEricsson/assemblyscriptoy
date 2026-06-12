@@ -14,5 +14,21 @@ export default defineConfig({
   },
   build: {
     target: 'esnext',
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/assemblyscript') || id.includes('node_modules/binaryen')) {
+            return 'assemblyscript';
+          }
+          if (
+            id.includes('@gasm-compiler/core') ||
+            id.includes('/src/gasm-integrator') ||
+            id.includes('/src/browser-gpu-executor')
+          ) {
+            return 'gasm';
+          }
+        },
+      },
+    },
   },
 });
