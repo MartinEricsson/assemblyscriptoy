@@ -1,4 +1,6 @@
 import { demoCatalog, loadDemoSource } from '../shader-source.js';
+import Prism from './prism.js';
+import 'prismjs/themes/prism-tomorrow.css';
 import {
     loadAssemblyScriptCompiler,
     loadGasmCompiler,
@@ -14,10 +16,17 @@ const INITIAL_WGSL = '// Click Compile & Run to generate WGSL from your Assembly
 let currentWGSL = INITIAL_WGSL;
 let currentSource = '';
 let currentDemo = 'starter';
+let currentDemoLoadId = 0;
+
+function escapeHTML(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
 
 // ── Compiler results builder ─────────────────────────────────────
 function buildCompilerResultsHTML({ asStderr, asBinarySize, gasmResult, renderMode }) {
-    const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     let html = '';
 
     // ── AS Compiler section ──
@@ -31,7 +40,7 @@ function buildCompilerResultsHTML({ asStderr, asBinarySize, gasmResult, renderMo
         const trimmed = asStderr.trim();
         if (trimmed) {
             html += `<div style="color: #dcdcaa; margin-top: 6px;"><strong>stderr:</strong></div>`;
-            html += `<pre style="color: #d4d4d4; margin: 4px 0 0 0; white-space: pre-wrap; font-size: 13px;">${esc(trimmed)}</pre>`;
+            html += `<pre style="color: #d4d4d4; margin: 4px 0 0 0; white-space: pre-wrap; font-size: 13px;">${escapeHTML(trimmed)}</pre>`;
         }
     } else if (asBinarySize != null) {
         html += `<div style="color: #6a9955; margin-top: 4px;">No warnings</div>`;
@@ -56,8 +65,8 @@ function buildCompilerResultsHTML({ asStderr, asBinarySize, gasmResult, renderMo
         if (diag.errors.length > 0) {
             html += `<div style="color: #f48771; margin-top: 8px;"><strong>Errors (${diag.errors.length}):</strong></div>`;
             for (const e of diag.errors) {
-                html += `<div style="color: #f48771; margin: 2px 0 2px 12px;">● [${esc(e.code)}] ${esc(e.message)}`;
-                if (e.functionName) html += ` <span style="color: #888;">(in ${esc(e.functionName)})</span>`;
+                html += `<div style="color: #f48771; margin: 2px 0 2px 12px;">● [${escapeHTML(e.code)}] ${escapeHTML(e.message)}`;
+                if (e.functionName) html += ` <span style="color: #888;">(in ${escapeHTML(e.functionName)})</span>`;
                 html += `</div>`;
             }
         }
@@ -66,8 +75,8 @@ function buildCompilerResultsHTML({ asStderr, asBinarySize, gasmResult, renderMo
         if (diag.warnings.length > 0) {
             html += `<div style="color: #dcdcaa; margin-top: 8px;"><strong>Warnings (${diag.warnings.length}):</strong></div>`;
             for (const w of diag.warnings) {
-                html += `<div style="color: #dcdcaa; margin: 2px 0 2px 12px;">▲ [${esc(w.code)}] ${esc(w.message)}`;
-                if (w.functionName) html += ` <span style="color: #888;">(in ${esc(w.functionName)})</span>`;
+                html += `<div style="color: #dcdcaa; margin: 2px 0 2px 12px;">▲ [${escapeHTML(w.code)}] ${escapeHTML(w.message)}`;
+                if (w.functionName) html += ` <span style="color: #888;">(in ${escapeHTML(w.functionName)})</span>`;
                 html += `</div>`;
             }
         }
@@ -77,8 +86,8 @@ function buildCompilerResultsHTML({ asStderr, asBinarySize, gasmResult, renderMo
         if (advisories.length > 0) {
             html += `<div style="color: #9cdcfe; margin-top: 8px;"><strong>Advisories (${advisories.length}):</strong></div>`;
             for (const a of advisories) {
-                html += `<div style="color: #9cdcfe; margin: 2px 0 2px 12px;">ℹ [${esc(a.code)}] ${esc(a.message)}`;
-                if (a.functionName) html += ` <span style="color: #888;">(in ${esc(a.functionName)})</span>`;
+                html += `<div style="color: #9cdcfe; margin: 2px 0 2px 12px;">ℹ [${escapeHTML(a.code)}] ${escapeHTML(a.message)}`;
+                if (a.functionName) html += ` <span style="color: #888;">(in ${escapeHTML(a.functionName)})</span>`;
                 html += `</div>`;
             }
         }
@@ -87,8 +96,8 @@ function buildCompilerResultsHTML({ asStderr, asBinarySize, gasmResult, renderMo
         if (diag.demotions.length > 0) {
             html += `<div style="color: #ce9178; margin-top: 8px;"><strong>Demotions (${diag.demotions.length}):</strong></div>`;
             for (const d of diag.demotions) {
-                html += `<div style="color: #ce9178; margin: 2px 0 2px 12px;">↓ ${esc(d.kind)}`;
-                if (d.functionName) html += ` <span style="color: #888;">(in ${esc(d.functionName)})</span>`;
+                html += `<div style="color: #ce9178; margin: 2px 0 2px 12px;">↓ ${escapeHTML(d.kind)}`;
+                if (d.functionName) html += ` <span style="color: #888;">(in ${escapeHTML(d.functionName)})</span>`;
                 html += `</div>`;
             }
         }
@@ -237,6 +246,7 @@ setEditorContent(currentSource);
 window.loadDemo = async function (demoName) {
     const demo = demoLibrary[demoName];
     if (!demo) return;
+    const loadId = ++currentDemoLoadId;
 
     // Update select value if called programmatically
     const select = document.getElementById('demoSelect');
@@ -250,24 +260,57 @@ window.loadDemo = async function (demoName) {
     });
 
     // Update source
+    const source = await loadDemoSource(demoName);
+    if (loadId !== currentDemoLoadId) return;
+
     currentDemo = demoName;
-    currentSource = await loadDemoSource(demoName);
+    currentSource = source;
     setEditorContent(currentSource);
 
-    // Stop animation and destroy executor before switching
-    if (isAnimating) {
-        stopAnimation();
-    }
-    if (executor) {
-        executor.destroy().catch(e => console.error('Error destroying executor:', e));
-        executor = null;
-    }
-    wasmInstance = null;
-    wasmMemory = null;
-
     // Auto-compile
-    window.setTimeout(() => compileAndRun(), 50);
+    await compileAndRun();
 };
+
+function isCurrentSession(sessionId) {
+    return sessionId === currentSessionId;
+}
+
+async function disposeExecutor(target) {
+    if (target) await target.destroy();
+}
+
+function cancelAnimationLoop() {
+    if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    isAnimating = false;
+    document.getElementById('stopBtn').style.display = 'none';
+    const fps = document.getElementById('statusFps');
+    if (fps) fps.textContent = '-- FPS';
+}
+
+function buildErrorResultHTML(message) {
+    return `<div style="margin-bottom: 16px;"><h3 style="color: #f48771; margin: 0 0 8px 0; font-size: 14px;">Error</h3><div style="background: #1e1e1e; border: 1px solid #f48771; border-radius: 4px; padding: 10px; font-family: 'Courier New', monospace; font-size: 13px;"><pre style="color: #f48771; margin: 0; white-space: pre-wrap;">${escapeHTML(message)}</pre></div></div>`;
+}
+
+function showRuntimeError(error, sessionId) {
+    if (!isCurrentSession(sessionId)) return;
+
+    const message = error instanceof Error ? error.message : String(error);
+    currentSessionId++;
+    cancelAnimationLoop();
+    setStatusChip('ERROR', 'error');
+    document.getElementById('status').innerHTML =
+        '<span class="error">Execution Error. See Compiler Results.</span>';
+
+    const results = document.getElementById('results');
+    results.innerHTML = buildErrorResultHTML(message) + (results.innerHTML || '');
+    results.style.display = 'block';
+    switchTab('results');
+    document.getElementById('compileRunBtn').disabled = false;
+    console.error('Animation error:', error);
+}
 
 // Compile and run with animation loop
 window.compileAndRun = async function () {
@@ -276,29 +319,44 @@ window.compileAndRun = async function () {
     const status = document.getElementById('status');
     const results = document.getElementById('results');
     const renderMode = document.getElementById('renderMode').value;
+    const source = getEditorContent();
+    const sessionId = ++currentSessionId;
+    let nextExecutor = null;
+    let preparedExecutor = null;
 
     compileRunBtn.disabled = true;
-    currentSource = getEditorContent();
-
-    // Stop any existing animation
-    stopAnimation();
-    const sessionId = ++currentSessionId;
+    currentSource = source;
+    cancelAnimationLoop();
     setStatusChip('COMPILING', 'compiling');
     setStatusMode(renderMode);
 
     try {
+        const previousExecutor = executor;
+        executor = null;
+        wasmInstance = null;
+        wasmMemory = null;
+        try {
+            await disposeExecutor(previousExecutor);
+        } catch (error) {
+            if (!isCurrentSession(sessionId)) return;
+            throw new Error(`Failed to destroy the previous GPU executor: ${error}`);
+        }
+        if (!isCurrentSession(sessionId)) return;
+
         status.innerHTML = '<span class="output">Compiling AS → Wasm...</span>';
 
         const { compileString } = await loadAssemblyScriptCompiler();
+        if (!isCurrentSession(sessionId)) return;
 
         // Compile ONCE
-        const { binary, text, stderr } = await compileString(currentSource, {
+        const { binary, text, stderr } = await compileString(source, {
             optimize: true,
             runtime: 'stub',
             initialMemory: 16,
             maximumMemory: 16,
             noAssert: true
         });
+        if (!isCurrentSession(sessionId)) return;
 
         const asStderr = stderr ? stderr.toString() : '';
         const asBinarySize = binary ? binary.length : null;
@@ -322,9 +380,12 @@ window.compileAndRun = async function () {
             status.innerHTML = '<span class="output">Compiling Wasm → WGSL...</span>';
 
             const { compileGasmIntegrator } = await loadGasmCompiler();
+            if (!isCurrentSession(sessionId)) return;
             const { BrowserGPUExecutor } = await loadGPUExecutorModule();
+            if (!isCurrentSession(sessionId)) return;
 
             const result = compileGasmIntegrator(binary);
+            if (!isCurrentSession(sessionId)) return;
 
             // Populate Compiler Results with both AS and Gasm output
             results.innerHTML = buildCompilerResultsHTML({ asStderr, asBinarySize, gasmResult: result, renderMode });
@@ -342,10 +403,7 @@ window.compileAndRun = async function () {
             updateReadonlyLineNumbers(currentWGSL, document.getElementById('wgslLineNumbers'));
 
             // Create fresh executor
-            if (executor) {
-                executor.destroy().catch(() => { });
-            }
-            executor = new BrowserGPUExecutor();
+            nextExecutor = new BrowserGPUExecutor();
 
             // Prepare the animation fast path — compile pipeline, allocate
             // GPU buffers, bind group, staging buffer ONCE. The GPU memory
@@ -356,7 +414,7 @@ window.compileAndRun = async function () {
             const inputBytes = 16;
             const outputBytes = 256 * 256 * 3 * 4;
             const memBuf = new Int32Array(memorySize / 4);
-            await executor.prepareAnimation(
+            await nextExecutor.prepareAnimation(
                 currentWGSL,
                 memBuf,
                 'i32',
@@ -374,6 +432,14 @@ window.compileAndRun = async function () {
                     },
                 },
             );
+            if (!isCurrentSession(sessionId)) {
+                await disposeExecutor(nextExecutor);
+                nextExecutor = null;
+                return;
+            }
+            preparedExecutor = nextExecutor;
+            executor = nextExecutor;
+            nextExecutor = null;
         } else {
             status.innerHTML = '<span class="output">Instantiating Wasm for CPU...</span>';
             const { instance } = await WebAssembly.instantiate(binary, {
@@ -382,6 +448,7 @@ window.compileAndRun = async function () {
                     seed: () => Math.random() * 2147483647,
                 }
             });
+            if (!isCurrentSession(sessionId)) return;
             wasmInstance = instance;
             wasmMemory = instance.exports.memory;
 
@@ -415,7 +482,10 @@ window.compileAndRun = async function () {
         const pixelsU32 = new Uint32Array(imageData.data.buffer);
 
         // Pre-allocate wasm views (memory is fixed at 16 pages, buffer won't change)
-        const wasmF32View = wasmMemory ? new Float32Array(wasmMemory.buffer) : null;
+        const runWasmInstance = wasmInstance;
+        const runWasmMemory = wasmMemory;
+        const wasmF32View = runWasmMemory ? new Float32Array(runWasmMemory.buffer) : null;
+        const runExecutor = preparedExecutor;
 
         const startTime = performance.now();
         let frameCount = 0;
@@ -442,16 +512,18 @@ window.compileAndRun = async function () {
 
         // Async GPU dispatch — zero allocation per frame.
         async function dispatchGPU(time) {
+            if (!isCurrentSession(sessionId)) return;
             memoryBufferF32[0] = time;
             try {
                 // executeFrame: no Maps, no Object.entries, no bind group
                 // recreation, no new arrays, no template-literal keys.
-                const result = await executor.executeFrame(memoryBufferI32);
-                if (sessionId !== currentSessionId) return;
+                const result = await runExecutor.executeFrame(memoryBufferI32);
+                if (!isCurrentSession(sessionId)) return;
                 copyPixels(result, 0);
                 hasNewFrame = true;
                 frameCount++;
             } catch (error) {
+                if (!isCurrentSession(sessionId)) return;
                 animError = error;
             } finally {
                 gpuPending = false;
@@ -464,9 +536,7 @@ window.compileAndRun = async function () {
             animationFrameId = requestAnimationFrame(animate);
 
             if (animError) {
-                console.error('Animation error:', animError);
-                status.textContent = '❌ ' + animError.message;
-                stopAnimation();
+                showRuntimeError(animError, sessionId);
                 return;
             }
 
@@ -483,12 +553,17 @@ window.compileAndRun = async function () {
                     dispatchGPU(timeSeconds);
                 }
             } else {
-                if (!wasmInstance || !wasmMemory) return;
-                wasmF32View[0] = timeSeconds;
-                wasmInstance.exports.main();
-                copyPixels(new Int32Array(wasmMemory.buffer));
-                ctx.putImageData(imageData, 0, 0);
-                frameCount++;
+                try {
+                    if (!runWasmInstance || !runWasmMemory) return;
+                    wasmF32View[0] = timeSeconds;
+                    runWasmInstance.exports.main();
+                    copyPixels(new Int32Array(runWasmMemory.buffer));
+                    ctx.putImageData(imageData, 0, 0);
+                    frameCount++;
+                } catch (error) {
+                    showRuntimeError(error, sessionId);
+                    return;
+                }
             }
 
             // Update status sparingly
@@ -515,12 +590,22 @@ window.compileAndRun = async function () {
         animationFrameId = requestAnimationFrame(animate);
 
     } catch (error) {
+        if (nextExecutor) {
+            try {
+                await disposeExecutor(nextExecutor);
+            } catch (cleanupError) {
+                if (isCurrentSession(sessionId)) {
+                    console.error('Error destroying executor after failed preparation:', cleanupError);
+                }
+            }
+        }
+        if (!isCurrentSession(sessionId)) return;
         setStatusChip('ERROR', 'error');
         status.innerHTML = `<span class="error">Compilation/Execution Error. See Compiler Results.</span>`;
         // Prepend the error to any existing compiler diagnostics already rendered
         const existingHTML = results.innerHTML || '';
-        const errorHTML = `<div style="margin-bottom: 16px;"><h3 style="color: #f48771; margin: 0 0 8px 0; font-size: 14px;">Error</h3><div style="background: #1e1e1e; border: 1px solid #f48771; border-radius: 4px; padding: 10px; font-family: 'Courier New', monospace; font-size: 13px;"><pre style="color: #f48771; margin: 0; white-space: pre-wrap;">${error.message.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></div></div>`;
-        results.innerHTML = errorHTML + existingHTML;
+        const message = error instanceof Error ? error.message : String(error);
+        results.innerHTML = buildErrorResultHTML(message) + existingHTML;
         results.style.display = 'block';
         switchTab('results');
         console.error(error);
@@ -530,16 +615,9 @@ window.compileAndRun = async function () {
 
 window.stopAnimation = function () {
     currentSessionId++; // Invalidate any pending animation loops
-    if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-        animationFrameId = null;
-    }
-    isAnimating = false;
-    document.getElementById('stopBtn').style.display = 'none';
+    cancelAnimationLoop();
     document.getElementById('status').innerHTML = '<span class="output">⏹ Stopped</span>';
     setStatusChip('STOPPED', 'stopped');
-    const fps = document.getElementById('statusFps');
-    if (fps) fps.textContent = '-- FPS';
     const meta = document.getElementById('canvasMeta');
     if (meta) meta.textContent = '256×256 · IDLE';
 };
@@ -647,4 +725,3 @@ document.addEventListener('keydown', (e) => {
 
 // Initial chip state
 setStatusChip('READY', 'ready');
-

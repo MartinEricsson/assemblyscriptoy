@@ -7,16 +7,22 @@
   "author": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsx src/build.ts",
-    "dev": "pnpm build && vite",
-    "preview": "vite preview"
+    "build": "vite build",
+    "check": "pnpm check:syntax && pnpm check:shaders && pnpm check:bundle && pnpm test:e2e",
+    "check:bundle": "vite build",
+    "check:shaders": "node scripts/check-shader-corpus.mjs",
+    "check:syntax": "find src scripts tests -type f \\( -name '*.js' -o -name '*.mjs' \\) -print0 | xargs -0 -n1 node --check && node --check shader-source.js && node --check playwright.config.mjs",
+    "dev": "vite",
+    "preview": "vite preview",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@gasm-compiler/core": "^0.5.0",
-    "assemblyscript": "^0.28.9"
+    "assemblyscript": "^0.28.9",
+    "prismjs": "^1.30.0"
   },
   "devDependencies": {
-    "tsx": "^4.7.0",
+    "@playwright/test": "^1.60.0",
     "vite": "^5.0.0"
   }
 }

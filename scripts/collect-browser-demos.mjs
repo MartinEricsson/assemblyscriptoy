@@ -1,10 +1,10 @@
 /**
  * Drive the live Vite app and scrape Compiler Results for each demo.
- * Requires: dev server on http://localhost:3001, `npx playwright install chromium` once.
+ * Requires: dev server on http://localhost:3001, `pnpm exec playwright install chromium` once.
  *
  * Run: node scripts/collect-browser-demos.mjs
  */
-import { chromium } from "playwright";
+import { chromium } from "@playwright/test";
 
 const BASE = process.env.PLAYGROUND_URL ?? "http://localhost:3001/";
 const DEMOS = [
