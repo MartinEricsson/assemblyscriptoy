@@ -202,7 +202,7 @@ assemblyscript-toy/
 ## Requirements
 
 - WebGPU-compatible browser (Chrome 113+, Edge 113+)
-- Node.js 18+
+- Node.js 24 LTS
 - pnpm
 
 ## Verification

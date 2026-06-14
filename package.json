@@ -6,6 +6,9 @@
   "license": "ISC",
   "author": "",
   "main": "index.js",
+  "engines": {
+    "node": "^24.0.0"
+  },
   "scripts": {
     "build": "vite build",
     "check": "pnpm check:syntax && pnpm check:shaders && pnpm check:bundle && pnpm test:e2e",
@@ -23,6 +26,6 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
-    "vite": "^5.0.0"
+    "vite": "^8.0.16"
   }
 }

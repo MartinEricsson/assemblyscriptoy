@@ -8,9 +8,6 @@ export default defineConfig({
   },
   optimizeDeps: {
     exclude: ['@gasm-compiler/core', 'assemblyscript'],
-    esbuildOptions: {
-      target: 'esnext',
-    },
   },
   build: {
     target: 'esnext',
