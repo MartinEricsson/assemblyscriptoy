@@ -19,7 +19,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@gasm-compiler/core": "^0.8.0",
+    "@gasm-compiler/core": "^0.8.1",
     "assemblyscript": "^0.28.9",
     "prismjs": "^1.30.0"
   },
