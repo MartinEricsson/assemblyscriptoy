@@ -4,7 +4,7 @@
  *
  * Run: node scripts/collect-browser-demos.mjs
  */
-import { chromium } from "@playwright/test";
+import { chromium } from "playwright";
 
 const BASE = process.env.PLAYGROUND_URL ?? "http://localhost:3001/";
 const DEMOS = [

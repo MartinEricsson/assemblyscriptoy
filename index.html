@@ -178,24 +178,54 @@
                 <div id="tab-readme" class="readme-pane" style="display: none;" role="tabpanel"
                     aria-labelledby="btn-readme">
                     <div class="readme-inner">
-                        <h2><span class="section-rule">── README ─────────</span></h2>
-                        <h3>&gt; 01 · EXPORT A MAIN FUNCTION</h3>
-                        <p>Export a function named <code>main()</code>. The Gasm compiler wraps it in a
-                            <code>@compute</code> shader entry point.</p>
+                        <h2><span class="section-rule">── QUICK GUIDE ─────</span></h2>
+                        <p>Write a 256 × 256 animated effect in AssemblyScript, then run it as a WebGPU
+                            compute shader or directly as WebAssembly.</p>
+
+                        <h3>&gt; 01 · PICK, EDIT, RUN</h3>
+                        <p>Choose a demo from the sidebar. Its source opens in <strong>AS Source</strong> and
+                            compiles automatically. Edit the code, then press <strong>Compile &amp; Run</strong>
+                            or <code>Cmd/Ctrl + Enter</code>. Choosing another demo discards unsaved edits.</p>
+
+                        <h3>&gt; 02 · CHOOSE AN EXECUTION MODE</h3>
+                        <p><strong>GPU · Gasm</strong> compiles AssemblyScript → Wasm → WGSL and runs it
+                            with WebGPU. <strong>CPU · Wasm</strong> runs the Wasm directly and skips Gasm.
+                            Use CPU mode when WebGPU is unavailable or when comparing behavior.</p>
+
+                        <h3>&gt; 03 · EXPORT THE ENTRY POINT</h3>
+                        <p>The runtime calls <code>main()</code> once per frame. Keep this exact signature:</p>
                         <pre class="code-block"><code>export function main(): void {
-  // your code here
+  const time = load&lt;f32&gt;(0);
+  // Write all 65,536 pixels here.
 }</code></pre>
-                        <h3>&gt; 02 · MEMORY ACCESS</h3>
-                        <p>Use <code>load&lt;T&gt;(offset)</code> and <code>store&lt;T&gt;(offset, value)</code> to
-                            interact with the single memory buffer shared with the GPU.</p>
-                        <pre class="code-block"><code>const count = load&lt;i32&gt;(0);
-store&lt;i32&gt;(4, count * 2);</code></pre>
-                        <h3>&gt; 03 · SUPPORTED TYPES</h3>
-                        <p>Gasm supports <code>i32</code>, <code>u32</code>, <code>f32</code>, and scalar math.
-                            <code>i64</code> and <code>f64</code> are demoted to 32-bit equivalents.</p>
-                        <h3>&gt; 04 · ADVANCED MEMORY LAYOUT</h3>
-                        <p>The first elements of memory can be used for passing uniforms like frame count or
-                            configuration flags.</p>
+
+                        <h3>&gt; 04 · WRITE RGB PIXELS</h3>
+                        <p>Pixel data starts at byte 16. Each pixel stores red, green, and blue as three
+                            consecutive <code>i32</code> values from 0 to 255.</p>
+                        <pre class="code-block"><code>const i = y * 256 + x;
+const offset = 16 + i * 12;
+store&lt;i32&gt;(offset, red);
+store&lt;i32&gt;(offset + 4, green);
+store&lt;i32&gt;(offset + 8, blue);</code></pre>
+
+                        <h3>&gt; 05 · INSPECT THE PIPELINE</h3>
+                        <p><strong>WAT</strong> shows AssemblyScript's WebAssembly text.
+                            <strong>WGSL</strong> shows Gasm's GPU output and can minify or copy it.
+                            <strong>Results</strong> lists compiler errors, warnings, advisories, and type
+                            demotions.</p>
+
+                        <h3>&gt; MEMORY &amp; TYPE NOTES</h3>
+                        <p>The app uses 1 MiB of linear memory: bytes 0–15 are runtime inputs, bytes
+                            16–786447 hold RGB output, and the remaining bytes can keep persistent state.
+                            Prefer <code>i32</code>, <code>u32</code>, and <code>f32</code>.
+                            <code>i64</code> and <code>f64</code> may be demoted by Gasm. The current
+                            Gasm-compatible subset does not support <code>Math.sin</code> or
+                            <code>Math.cos</code>; the Starter Template includes <code>triWave()</code>.</p>
+
+                        <h3>&gt; SHORTCUTS</h3>
+                        <p><code>Cmd/Ctrl + Enter</code> runs, <code>Cmd/Ctrl + .</code> stops, and
+                            <code>1</code>–<code>5</code> switch between the five tabs when the editor is not
+                            focused.</p>
                     </div>
                 </div>
             </div>

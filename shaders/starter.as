@@ -15,15 +15,18 @@
 //
 //  SHARED LINEAR MEMORY LAYOUT
 //  ─────────────────────────────────────────────────────────────
-//  The single Wasm memory page (64 KB) is shared with the GPU.
+//  The app allocates 1 MiB of linear memory for both CPU and GPU
+//  execution.
 //
 //    Byte  0 .. 3   → f32  time   (elapsed × 60 / 1000 ≈ frame counter)
+//    Byte  4 .. 15  → reserved runtime inputs
 //    Byte 16 ..     → pixel data, one pixel = 12 bytes:
 //                       [+0]  R  as i32  (0 – 255)
 //                       [+4]  G  as i32  (0 – 255)
 //                       [+8]  B  as i32  (0 – 255)
 //
 //  Pixel i is at byte offset:  16 + i * 12
+//  Bytes after the pixel output can hold persistent state.
 //
 //  MATH CONSTRAINTS
 //  ─────────────────────────────────────────────────────────────
@@ -38,10 +41,10 @@
 //  1. Edit the "YOUR EFFECT HERE" block below.
 //  2. Add more private helper functions above main() as needed.
 //  3. See the other shaders/ files for more patterns:
-//       checkerboard.as  – pure integer patterns
-//       plasma.as        – multi-wave blending with triWave
-//       rainbow.as       – hue-wheel with piecewise linear math
-//       metaballs.as     – distance-field blobs
+//       xor_texture_zoo.as  – pure integer patterns
+//       plasma.as           – layered wave blending
+//       metaballs.as        – distance-field blobs
+//       persistent_life.as  – state retained between GPU frames
 // ============================================================
 
 // Canvas dimensions (always 256 × 256)

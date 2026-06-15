@@ -900,7 +900,8 @@ code[class*="language-"] { text-shadow: none; }
 .results-pane #results { margin: 0; }
 
 .readme-pane {
-    flex: 1;
+    position: absolute;
+    inset: 0;
     overflow: auto;
     padding: 0;
     background: var(--panel-3);

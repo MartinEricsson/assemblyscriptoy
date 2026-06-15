@@ -18,7 +18,7 @@ importers:
         specifier: ^1.30.0
         version: 1.30.0
     devDependencies:
-      '@playwright/test':
+      playwright:
         specifier: ^1.60.0
         version: 1.60.0
       vite:
@@ -47,11 +47,6 @@ packages:
 
   '@oxc-project/types@0.133.0':
     resolution: {integrity: sha512-KzkdCd6Uxqnf6l3HOw1xfatAlUURA0g14cvBYFyJ5SaNOQbOUvBr9PKArcPcrNIeRsBdgcUzOGrhKveVpvOIGA==}
-
-  '@playwright/test@1.60.0':
-    resolution: {integrity: sha512-O71yZIbAh/PxDMNGns37GHBIfrVkEVyn+AXyIa5dOTfb4/xNvRWV+Vv/NMbNCtODB/pO7vLlF2OTmMVLhmr7Ag==}
-    engines: {node: '>=18'}
-    hasBin: true
 
   '@rolldown/binding-android-arm64@1.0.3':
     resolution: {integrity: sha512-454rs7jHngixp/NMxd5srYD57OnzSlZ/eFTETjORQHLwJG1lRtmNOJcBerZlfu4GjKqeq8aCCIQrMdHyhI51Hw==}
@@ -376,10 +371,6 @@ snapshots:
     optional: true
 
   '@oxc-project/types@0.133.0': {}
-
-  '@playwright/test@1.60.0':
-    dependencies:
-      playwright: 1.60.0
 
   '@rolldown/binding-android-arm64@1.0.3':
     optional: true
