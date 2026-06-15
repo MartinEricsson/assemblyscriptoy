@@ -1,5 +1,22 @@
-// Flagship: Raymarched SDF Scene with perspective, lighting, soft shadows & AO
-// Uses f32 only — compute-heavy for GPU showcase
+// ============================================================
+//  Raymarched SDF Scene - distance-field scene construction
+// ============================================================
+//  Signed distance functions describe the ground, spheres, box,
+//  and torus. Sphere tracing advances each ray by the current
+//  distance estimate, then the hit point is shaded with normals,
+//  soft shadows, ambient occlusion, fog, and one reflection.
+//
+//  MAX_STEPS, MAX_DIST, and SURF_DIST form the main quality/cost
+//  trade-off. More steps find difficult surfaces but cost more;
+//  a smaller SURF_DIST sharpens hits but can reveal noise or slow
+//  convergence. Keep SDFs conservative: overestimated distances
+//  can step through thin geometry.
+//
+//  The reflection is capped at 40 steps, shadows use shorter
+//  marches, and AO uses five samples to keep per-pixel work bounded.
+//  f32 helper math is used because i64/f64 and Math.sin/Math.cos
+//  are outside the preferred shader subset.
+// ============================================================
 const WIDTH: i32 = 256;
 const HEIGHT: i32 = 256;
 const TIME_OFFSET: i32 = 0;
@@ -9,7 +26,7 @@ const SURF_DIST: f32 = 0.001;
 const PI: f32 = 3.14159265;
 const TWO_PI: f32 = 6.28318530;
 
-// f32-only sin/cos/pow/exp (avoids AS runtime i64/f64)
+// f32-only sin/cos/pow/exp (stays within the supported number types)
 function sinF(x: f32): f32 {
   // Range reduce to [-PI, PI]
   x = x - Mathf.floor(x / TWO_PI + 0.5) * TWO_PI;

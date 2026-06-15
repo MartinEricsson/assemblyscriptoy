@@ -1,50 +1,36 @@
 // ============================================================
-//  starter.as  –  Boilerplate / Getting Started Template
+//  Starter Template - essential shader-writing rules
 // ============================================================
+//  main() runs once per frame and must write all 65,536 pixels.
+//  The canvas is fixed at 256x256 and pixels are row-major:
+//      i = y * 256 + x
 //
-//  HOW THIS PROJECT WORKS (read once, then delete these lines)
-//  ─────────────────────────────────────────────────────────────
-//  1. This file is AssemblyScript – a strict TypeScript subset
-//     that compiles to WebAssembly (Wasm).
+//  The shader reads and writes a 1 MiB linear memory buffer:
+//    bytes 0..3       f32 time, about +1 per frame at 60 FPS
+//    bytes 4..15      reserved; do not use
+//    bytes 16..786447 RGB output, three i32 values per pixel
+//    bytes 786448..   optional persistent state
 //
-//  2. The Gasm compiler then converts that Wasm binary into a
-//     WGSL compute shader that runs on the GPU via WebGPU.
+//  Pixel i starts at 16 + i * 12. Store R, G, and B at offsets
+//  +0, +4, and +8. Channels should stay in [0,255]; clamping
+//  prevents overflow from wrapping into unexpected colours.
 //
-//  3. The GPU calls main() once per frame.  Each call must fill
-//     the entire 256×256 canvas (65 536 pixels) in one shot.
+//  Prefer i32, u32, and f32. Avoid i64 and f64, and do not rely
+//  on Math.sin/Math.cos. Small f32 approximations or periodic
+//  helpers such as triWave() keep the shader within the supported
+//  math subset. f32 coordinates are best for smooth gradients;
+//  integer coordinates are useful for grids and bitwise patterns.
 //
-//  SHARED LINEAR MEMORY LAYOUT
-//  ─────────────────────────────────────────────────────────────
-//  The app allocates 1 MiB of linear memory for both CPU and GPU
-//  execution.
+//  Persistent simulations need two state buffers: read the old
+//  state and write the new state separately so updates do not
+//  affect neighbouring cells during the same frame. State is
+//  cleared when the shader is recompiled.
 //
-//    Byte  0 .. 3   → f32  time   (elapsed × 60 / 1000 ≈ frame counter)
-//    Byte  4 .. 15  → reserved runtime inputs
-//    Byte 16 ..     → pixel data, one pixel = 12 bytes:
-//                       [+0]  R  as i32  (0 – 255)
-//                       [+4]  G  as i32  (0 – 255)
-//                       [+8]  B  as i32  (0 – 255)
-//
-//  Pixel i is at byte offset:  16 + i * 12
-//  Bytes after the pixel output can hold persistent state.
-//
-//  MATH CONSTRAINTS
-//  ─────────────────────────────────────────────────────────────
-//  • No  Math.sin / Math.cos  – these are not available in the
-//    Gasm-compatible subset of AssemblyScript.
-//  • f32 arithmetic is fine; i32 arithmetic is fine.
-//  • Use triWave() below as a smooth sin-substitute.
-//  • Use f32 divisions / multiplications for smoother gradients.
-//
-//  NEXT STEPS
-//  ─────────────────────────────────────────────────────────────
-//  1. Edit the "YOUR EFFECT HERE" block below.
-//  2. Add more private helper functions above main() as needed.
-//  3. See the other shaders/ files for more patterns:
-//       xor_texture_zoo.as  – pure integer patterns
-//       plasma.as           – layered wave blending
-//       metaballs.as        – distance-field blobs
-//       persistent_life.as  – state retained between GPU frames
+//  Start by replacing the "YOUR EFFECT HERE" block. See:
+//    xor_texture_zoo.as  for integer and bitwise patterns
+//    plasma.as           for smooth animated fields
+//    metaballs.as        for implicit 2-D surfaces
+//    persistent_life.as  for frame-to-frame state
 // ============================================================
 
 // Canvas dimensions (always 256 × 256)
@@ -88,8 +74,8 @@ function triWave(val: i32): i32 {
 
 // ── Entry point ───────────────────────────────────────────────
 //
-// The Gasm compiler looks for EXACTLY this signature.
-// Do not rename it.  Do not add parameters.
+// The shader requires exactly this entry-point signature.
+// Do not rename it or add parameters.
 export function main(): void {
 
   // ── Read the current time ──────────────────────────────────

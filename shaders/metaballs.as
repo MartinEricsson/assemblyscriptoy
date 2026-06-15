@@ -1,16 +1,21 @@
 // ============================================================
-//  metaballs.as — Analytic metaballs with iso-band shading
+//  Metaballs - implicit fields and iso-surface shading
 // ============================================================
-//  Six soft blobs drift around the canvas. For each pixel we
-//  sum the inverse-square influence of every blob:
+//  Six moving blobs contribute an inverse-square field:
 //       field(p) = Σ  r_i² / |p - c_i|²
-//  then shade based on the field value:
-//    field < 1.0            → background (dark)
-//    1.0 ≤ field < 1.05     → thin iso-contour outline
-//    field ≥ 1.0            → interior, coloured by field gradient
+//  Their fields merge naturally where the sum crosses a threshold.
+//    field < 0.95         background
+//    0.95..1.05          bright contour
+//    field > 1.05         coloured interior
 //
-//  Complementary to flagship_sdf_scene.as: same "implicit
-//  surface" idea, 10× simpler, no raymarching, easy to read.
+//  Tune N_BALLS only together with the explicitly listed ball
+//  values in main(); this example is currently written for six.
+//  Radius controls influence, while threshold width controls the
+//  outline thickness. The 0.0005 distance term must remain above
+//  zero to prevent division by zero at a blob centre.
+//
+//  Ball centres are calculated once per frame, outside the pixel
+//  loop, because they are identical for every pixel.
 // ============================================================
 
 const WIDTH:  i32 = 256;

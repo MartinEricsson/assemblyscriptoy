@@ -1,6 +1,22 @@
-// Flagship: Photorealistic Volumetric Clouds with Ocean Reflection
-// 48 cloud steps (sky), 32 steps (reflection), 6-octave FBM,
-// Henyey-Greenstein phase, Fresnel water, animated waves, ACES tonemapping
+// ============================================================
+//  Volumetric Clouds - ray marching, lighting, and reflection
+// ============================================================
+//  Sky rays take 48 samples through a procedural cloud layer.
+//  Water rays reflect the sky and use 32 samples. Six-octave FBM
+//  shapes density; a cheaper three-octave version is used where
+//  full detail is unnecessary.
+//
+//  Step counts and FBM octaves dominate cost. Lower them first
+//  when tuning performance. Too few cloud steps cause visible
+//  banding; more octaves add small detail but multiply noise work.
+//  Marching stops once transmittance falls below 0.01 because
+//  deeper samples can no longer contribute visibly.
+//
+//  Henyey-Greenstein phase terms create forward, back, and silver
+//  lighting. Fresnel makes grazing-angle water more reflective.
+//  HDR lighting is tone-mapped before conversion to [0,255], which
+//  preserves bright sun and cloud detail without channel clipping.
+// ============================================================
 const WIDTH: i32 = 256;
 const HEIGHT: i32 = 256;
 const TIME_OFFSET: i32 = 0;

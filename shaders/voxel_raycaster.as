@@ -1,16 +1,20 @@
 // ============================================================
-//  voxel_raycaster.as — DDA traversal of a procedural voxel grid
+//  Voxel Raycaster - grid traversal guide
 // ============================================================
-//  Classic voxel-style renderer:
-//    • 16×16×16 procedural voxel grid (per-cell hash → solid/empty).
-//    • Perspective camera orbits the grid.
-//    • Per-pixel Amanatides-Woo DDA stepping finds the first solid
-//      voxel along the ray.
-//    • Shading = face normal · light + cheap distance fog.
+//  Each pixel casts a perspective ray through a procedural 16^3
+//  voxel field. Amanatides-Woo DDA advances to one voxel boundary
+//  at a time, which is cheaper and more exact than taking many
+//  small fixed-distance samples.
 //
-//  Showcases MIXED integer + float codegen in the WAT/WGSL
-//  output: the inner loop is dominated by i32 DDA state
-//  while the setup and shading use f32 arithmetic.
+//  GRID controls world size; increasing it raises both voxelAt()
+//  work and the traversal distance. MAX_STEPS is a hard safety
+//  cap and must cover the approach from the orbiting camera plus
+//  travel through the grid. For GRID=16, 96 leaves headroom.
+//
+//  Direction components are protected with 1e-8 before division
+//  so rays parallel to an axis do not produce invalid distances.
+//  Out-of-bounds voxels are empty, allowing one final voxelAt()
+//  test to distinguish a hit from a ray that left the grid.
 // ============================================================
 
 const WIDTH:  i32 = 256;
@@ -154,11 +158,9 @@ export function main(): void {
     let tMaxY: f32 = nextY * invAy;
     let tMaxZ: f32 = nextZ * invAz;
 
-    // Walk the grid. `hitAxis` records which face we crossed: 0=X, 1=Y, 2=Z.
-    // NOTE: we intentionally DON'T set a `hit` flag right before `break` —
-    // the Gasm WASM→WGSL optimizer currently drops `local.set` that appears
-    // immediately before a `br` out of a loop (observed 2026-04-22).
-    // Instead we re-test voxelAt() post-loop.
+    // Walk the grid. `hitAxis` records which face was crossed:
+    // 0=X, 1=Y, 2=Z. The final voxel is tested after the loop so
+    // every exit path uses the same hit decision.
     let hitAxis: i32 = 0;
     let totalT: f32 = 0.0;
 

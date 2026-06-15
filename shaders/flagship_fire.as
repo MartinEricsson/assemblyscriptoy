@@ -1,13 +1,28 @@
-// Flagship: Magical Stylized Fire — FBM domain warping, cosine hue palette,
-// spiral spark particles, pulsing aura rings, ACES tonemapping
-// 7-octave FBM + double domain warp — showcases GPU parallel noise computation
+// ============================================================
+//  Turbulent Fire - volumetric compositing and domain warping
+// ============================================================
+//  A warped noise field forms a flame volume. Sixteen depth slices
+//  are composited front-to-back with Beer's law, then sparks,
+//  glow, vignette, tone mapping, and gamma are added.
+//
+//  The main cost controls are the 16 volume steps, seven FBM
+//  octaves, and eight spark layers. Reducing steps can expose
+//  slices; reducing octaves removes fine turbulence. The expensive
+//  double warp is calculated once per pixel and reused by every
+//  depth slice for a large saving with little visual loss.
+//
+//  Early exit at opacity 0.99 skips hidden samples. Density and
+//  colour are allowed above display range while lighting is built,
+//  then ACES tone mapping compresses them to [0,1] before storage.
+//  f32 approximations provide the unsupported transcendental math.
+// ============================================================
 const WIDTH: i32 = 256;
 const HEIGHT: i32 = 256;
 const TIME_OFFSET: i32 = 0;
 const PI: f32 = 3.14159265;
 const TWO_PI: f32 = 6.28318530;
 
-// --- f32-only math (avoids AS runtime i64/f64) ------------------------------
+// --- f32-only math (stays within the supported number types) ----------------
 
 function sinF(x: f32): f32 {
   x = x - Mathf.floor(x / TWO_PI + 0.5) * TWO_PI;
@@ -93,7 +108,7 @@ function fbm(x: f32, y: f32): f32 {
   return v;
 }
 
-// Lighter FBM (3 octaves) for warp offsets — saves GPU cycles
+// Lighter FBM (3 octaves) for warp offsets - avoids unnecessary noise work
 function fbmLight(x: f32, y: f32): f32 {
   let v: f32 = 0.0; let a: f32 = 0.5;
   let px: f32 = x; let py: f32 = y;

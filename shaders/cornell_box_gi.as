@@ -1,6 +1,24 @@
-// Cornell Box with Global Illumination (Path Tracing)
-// Uses f32 only — progressive accumulation via frame count
-// Adjust SAMPLES_PER_PIXEL and MAX_BOUNCES to trade noise vs speed
+// ============================================================
+//  Cornell Box - stochastic path tracing guide
+// ============================================================
+//  Each pixel traces 100 jittered camera rays. Rays bounce through
+//  a Cornell box, sample diffuse directions, and gather emitted
+//  light. Reinhard tone mapping and gamma prepare HDR radiance for
+//  the [0,255] output channels.
+//
+//  Cost scales approximately with SAMPLES_PER_PIXEL * MAX_BOUNCES:
+//  the defaults allow up to 500 path segments per pixel. Lower
+//  samples for speed at the cost of noise; lower bounces for speed
+//  at the cost of indirect light and colour bleeding.
+//
+//  Frames are not accumulated. The frame value only changes the
+//  random seed, so each frame is a fresh estimate. True progressive
+//  rendering would need persistent per-pixel sums and sample counts.
+//
+//  EPSILON offsets secondary rays away from the surface to avoid
+//  self-intersections. Keep calculations in f32/u32; custom math
+//  helpers avoid unsupported i64/f64 transcendental paths.
+// ============================================================
 const WIDTH: i32 = 256;
 const HEIGHT: i32 = 256;
 const TIME_OFFSET: i32 = 0;

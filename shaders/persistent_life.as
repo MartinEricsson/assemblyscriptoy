@@ -1,9 +1,21 @@
 // ============================================================
-//  persistent_life.as - Conway's Life in GPU-resident memory
+//  Persistent Life - writing frame-to-frame simulations
 // ============================================================
-//  Demonstrates the new persistent state region. The CPU uploads
-//  only time/uniform bytes each frame; the 128x128 Life grid stays
-//  on the GPU and ping-pongs between two state buffers.
+//  Conway's Life runs on a 128x128 toroidal field, then each cell
+//  is drawn as a 2x2 block on the 256x256 canvas.
+//
+//  Two 64 KiB cell buffers are required. Every cell must read the
+//  same completed generation, so one buffer is read while the
+//  other is written; frame parity swaps their roles. Updating one
+//  buffer in place would make results depend on iteration order.
+//
+//  The state begins at byte 786448, after the RGB output. A magic
+//  value marks initialization because zero is also a valid cell
+//  value. Recompiling clears state and reseeds the automaton.
+//
+//  FIELD is limited by the available persistent region. With i32
+//  cells and two buffers, 128x128 uses 131,072 bytes plus metadata.
+//  wrapCoord() gives the field joined edges instead of borders.
 // ============================================================
 
 const WIDTH: i32 = 256;

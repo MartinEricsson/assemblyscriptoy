@@ -1,13 +1,17 @@
 // ============================================================
-//  plasma.as — Classic demoscene plasma
+//  Plasma - layered waves and palette mapping
 // ============================================================
-//  Four overlapping sine waves (two linear, two radial) summed
-//  into a scalar field, then run through a cosine-palette lookup.
+//  Four waves, two linear and two radial, are averaged into one
+//  scalar field. A cosine palette converts that field to RGB.
+//  Separating shape from colour makes both easy to tune.
 //
-//  This is the natural second lesson after starter.as: it
-//  introduces f32 sinF/cosF without the 400-line math prelude
-//  used by the flagship shaders. Read starter.as first if you
-//  are new to the memory layout.
+//  Change wave frequency for finer/coarser bands, time multipliers
+//  for motion speed, and palette phase offsets for colour. Keep the
+//  four-wave sum scaled by 0.25 so the field remains near [0,1].
+//
+//  sinF/cosF are f32 approximations because Math.sin/Math.cos are
+//  outside the supported shader subset. Time is scaled by 0.016
+//  because the input advances by roughly one unit per frame.
 // ============================================================
 
 const WIDTH:  i32 = 256;
@@ -16,7 +20,7 @@ const TIME_OFFSET: i32 = 0;
 const PI:     f32 = 3.14159265;
 const TWO_PI: f32 = 6.28318530;
 
-// ── f32-only sin/cos (avoids AS runtime i64/f64) ─────────────
+// ── f32-only sin/cos (stays within the supported number types) ─
 function sinF(x: f32): f32 {
   x = x - Mathf.floor(x / TWO_PI + 0.5) * TWO_PI;
   if (x > PI * 0.5)  x = PI  - x;

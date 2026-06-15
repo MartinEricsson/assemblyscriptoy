@@ -1,6 +1,21 @@
-// Flagship: Deep Mandelbrot Zoom — 500 iterations, smooth coloring, animated zoom
-// f32-only math — compute-heavy GPU showcase
-// 4×4 stratified-grid supersampling AA (16 samples), rich multi-band cosine palette
+// ============================================================
+//  Deep Mandelbrot Zoom - iteration and supersampling guide
+// ============================================================
+//  Each pixel evaluates 16 rotated subpixel samples. Every sample
+//  may run up to 500 Mandelbrot iterations, so the worst case is
+//  8,000 iterations per output pixel. MAX_ITER and sample count
+//  are therefore the primary performance controls.
+//
+//  Smooth escape-time colouring removes visible bands outside the
+//  set; samples that reach MAX_ITER are treated as inside and stay
+//  dark. The rotated 4x4 grid reduces jagged edges and moire, but
+//  its offsets are manually listed, so changing AA_SAMPLES also
+//  requires changing those samples and INV_AA.
+//
+//  The zoom is intentionally limited because f32 loses detail at
+//  extreme magnification. Custom f32 log, exp, and trigonometric
+//  helpers keep the shader within the supported numeric subset.
+// ============================================================
 const WIDTH: i32 = 256;
 const HEIGHT: i32 = 256;
 const TIME_OFFSET: i32 = 0;
@@ -34,7 +49,7 @@ function log2F(x: f32): f32 { return logF(x) * 1.4426950; }
 
 function clampF(v: f32, lo: f32, hi: f32): f32 { return Mathf.min(Mathf.max(v, lo), hi); }
 
-// exp2F: compute 2^x without while loops (avoids breaking parallelization)
+// exp2F: compute 2^x with fixed work instead of data-dependent loops
 function exp2F(x: f32): f32 {
   const n: f32 = Mathf.floor(x);
   const f: f32 = x - n;
@@ -123,7 +138,7 @@ export function main(): void {
   // Palette mix oscillates gently
   const palMix: f32 = 0.35 + 0.25 * sinF(time * 0.2);
 
-  // 4×4 rotated-grid AA — 16 samples, manually unrolled for GPU compatibility
+  // 4×4 rotated-grid AA - 16 explicit samples with fixed positions
   // Pre-compute all 16 rotated offsets (26.6° rotation for anti-moiré)
   // Raw offsets: [-0.375, -0.125, 0.125, 0.375] in each axis
   // cos(26.6°) ≈ 0.8944, sin(26.6°) ≈ 0.4472

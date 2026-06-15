@@ -1,9 +1,21 @@
 // ============================================================
-//  persistent_heat.as - Diffusing heat field on the GPU
+//  Persistent Heat - diffusion with retained state
 // ============================================================
-//  The heat map lives entirely in the persistent state region.
-//  Each frame reads one 128x128 buffer, writes the next buffer,
-//  and renders the previous completed field scaled to 256x256.
+//  A 128x128 heat field is diffused, cooled, and fed by two moving
+//  sources. Each simulation cell is displayed as a 2x2 pixel block.
+//
+//  The two i32 state buffers ping-pong so every new value is based
+//  on the same previous frame. The weighted centre sample controls
+//  how quickly heat spreads; 246/256 applies cooling, and
+//  clampHeat() prevents sources from growing without bound.
+//
+//  State starts at byte 786448. The two 128x128 buffers consume
+//  131,072 bytes plus metadata and fit inside the 1 MiB memory.
+//  A magic value distinguishes an initialized zero-temperature
+//  field from fresh memory. Recompiling resets the simulation.
+//
+//  Colours are derived from heat >> 4, so changing the heat range
+//  may also require changing the palette scaling.
 // ============================================================
 
 const WIDTH: i32 = 256;

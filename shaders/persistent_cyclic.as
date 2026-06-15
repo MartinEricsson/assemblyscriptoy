@@ -1,10 +1,19 @@
 // ============================================================
-//  persistent_cyclic.as - Cyclic cellular automaton
+//  Persistent Cyclic Automaton - multi-state cell rules
 // ============================================================
-//  A different flavor of persistent memory demo: every cell has
-//  a color state from 0..15. A cell advances only when a neighbor
-//  has the next state, producing chasing fronts and spiral waves.
-//  The entire automaton lives in GPU-resident state memory.
+//  Every cell has one of 16 states. It advances to the next state
+//  only when one of its eight neighbours already has that state,
+//  producing chasing fronts and spiral waves.
+//
+//  Two 128x128 i32 buffers ping-pong between old and new state.
+//  This is essential: in-place writes would let early cells affect
+//  later cells during the same generation. Coordinates wrap, so
+//  patterns cross one edge and continue from the opposite edge.
+//
+//  State starts at byte 786448; both buffers use 131,072 bytes
+//  plus metadata. The magic value marks seeded memory, and a
+//  recompile clears it. The `& 15` operations are tied to exactly
+//  16 states; use modulo or a new mask if that count changes.
 // ============================================================
 
 const WIDTH: i32 = 256;

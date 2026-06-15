@@ -1,9 +1,20 @@
 // ============================================================
-//  xor_texture_zoo.as — Gallery of classic bitwise patterns
+//  XOR Texture Zoo - integer and bitwise pattern guide
 // ============================================================
-//  A 2×4 grid of 128×64 tiles showing the famous integer/bitwise
-//  "hello world" shaders. Pure i32 arithmetic — this produces
-//  unusually short, readable WAT and WGSL output.
+//  Eight 128x64 tiles show how arithmetic, shifts, masks, XOR,
+//  AND, and squared distance can create textures without f32
+//  math. The frame value is converted to i32 because these
+//  patterns animate in discrete steps.
+//
+//  Safe places to experiment:
+//    - Change each tile formula to alter its geometry.
+//    - Change palette multipliers to remap values to colour.
+//    - Change tile dimensions only if the row/column calculations
+//      and border tests are updated to match.
+//
+//  Keep values masked or clamped to [0,255]. Bitwise operations
+//  can produce negative or large i32 values, so an explicit
+//  colour range makes the result predictable.
 //
 //  Layout (each tile is 128 wide, 64 tall):
 //     ┌──────────────┬──────────────┐
