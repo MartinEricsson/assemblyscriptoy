@@ -20,7 +20,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
-    "@gasm-compiler/core": "^0.5.0",
+    "@gasm-compiler/core": "^0.8.0",
     "assemblyscript": "^0.28.9",
     "prismjs": "^1.30.0"
   },

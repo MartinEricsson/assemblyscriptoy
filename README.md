@@ -109,7 +109,7 @@ export function main(): void {
 When you click **Compile & Run** in the UI, `src/main.js` runs the full pipeline entirely in the browser — no build step required:
 
 1. **AssemblyScript → Wasm**: `compileString()` from the bundled `assemblyscript` package.
-2. **Wasm → WGSL**: `compileGasmIntegrator()` (`src/gasm-integrator.js`) wraps Gasm 0.5's `compileWithRuntimeInfo()` integrator path — extension inference, binding metadata, and mutable-global handling without manual Wasm patching.
+2. **Wasm → WGSL**: `compileGasmIntegrator()` (`src/gasm-integrator.js`) wraps Gasm 0.7's `compileWithRuntimeInfo()` integrator path — extension inference, binding metadata, mutable-global handling, and optional WGSL minification without manual Wasm patching.
 3. **GPU execution**: `BrowserGPUExecutor` initialises WebGPU, then calls `prepareAnimation()` once to allocate all GPU resources (pipeline, bind groups, staging buffers), followed by `executeFrame()` per frame with zero JS allocations.
 
 Both **GPU mode** (WebGPU via the full Gasm pipeline) and **CPU mode** (direct WebAssembly execution in the browser, skipping Gasm) are supported via the render-mode toggle in the UI.

@@ -120,3 +120,17 @@ test('local Prism highlights source and compiler output without cdnjs', async ({
         pageErrors.filter(error => /Prism is not defined|language grammar/i.test(error.message)),
     ).toEqual([]);
 });
+
+test('WGSL output panel exposes minify and copies the source', async ({ context, page }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await page.goto('/');
+    await page.locator('#renderMode').selectOption('cpu');
+    await page.getByRole('tab', { name: 'WGSL' }).click();
+
+    await expect(page.getByLabel('MINIFY OUTPUT')).toBeVisible();
+    await page.getByRole('button', { name: 'COPY WGSL' }).click();
+    await expect(page.locator('#copyWGSLBtn')).toHaveText('COPIED');
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toContain(
+        'Click Compile & Run to generate WGSL',
+    );
+});

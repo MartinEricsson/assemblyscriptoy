@@ -809,6 +809,56 @@ code[class*="language-"] { text-shadow: none; }
     overflow: hidden;
     background: var(--panel-3);
 }
+.wgsl-tab {
+    flex-direction: column;
+}
+.wgsl-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 14px;
+    min-height: 38px;
+    padding: 5px 10px;
+    background: var(--panel-2);
+    border-bottom: var(--border-rule);
+}
+.wgsl-minify-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--fg-dim);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+}
+.wgsl-minify-control input {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    accent-color: var(--accent);
+}
+.wgsl-tool-btn {
+    min-height: 26px;
+    padding: 4px 9px;
+    color: var(--accent);
+    background: var(--bg);
+    border: 1px solid var(--rule-2);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+}
+.wgsl-tool-btn:hover {
+    color: var(--bg);
+    background: var(--accent);
+    border-color: var(--accent);
+}
+.readonly-code-layout {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
 .readonly-line-numbers {
     flex: 0 0 auto;
     width: 46px;

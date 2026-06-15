@@ -10,11 +10,7 @@ export function loadAssemblyScriptCompiler() {
 }
 
 export function loadGasmCompiler() {
-    gasmModulePromise ??= import('./gasm-integrator.js').then(async (mod) => {
-        const { setBrowserCompilerBackend } = await import('@gasm-compiler/core/browser');
-        setBrowserCompilerBackend('typescript');
-        return mod;
-    });
+    gasmModulePromise ??= import('./gasm-integrator.js');
     return gasmModulePromise;
 }
 

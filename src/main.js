@@ -224,6 +224,13 @@ function updateReadonlyLineNumbers(text, lineNumEl) {
     lineNumEl.innerHTML = Array.from({ length: count }, (_, i) => `<div>${i + 1}</div>`).join('');
 }
 
+function updateWGSLDisplay(wgsl) {
+    const codeElement = document.getElementById('wgslCodeElement');
+    codeElement.textContent = wgsl;
+    Prism.highlightElement(codeElement);
+    updateReadonlyLineNumbers(wgsl, document.getElementById('wgslLineNumbers'));
+}
+
 document.getElementById('watCodePre').addEventListener('scroll', function () {
     document.getElementById('watLineNumbers').scrollTop = this.scrollTop;
 });
@@ -234,11 +241,50 @@ document.getElementById('wgslCodePre').addEventListener('scroll', function () {
 
 
 // Display initial values
-const wgslCodeElement = document.getElementById('wgslCodeElement');
-wgslCodeElement.textContent = currentWGSL;
-Prism.highlightElement(wgslCodeElement);
-updateReadonlyLineNumbers(currentWGSL, document.getElementById('wgslLineNumbers'));
+updateWGSLDisplay(currentWGSL);
 setEditorContent(currentSource);
+
+const copyWGSLBtn = document.getElementById('copyWGSLBtn');
+
+async function copyTextToClipboard(text) {
+    if (navigator.clipboard?.writeText) {
+        try {
+            await navigator.clipboard.writeText(text);
+            return;
+        } catch {
+            // Fall through for browsers that expose the API but deny the call.
+        }
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const copied = document.execCommand('copy');
+    textarea.remove();
+    if (!copied) throw new Error('Clipboard copy was rejected.');
+}
+
+copyWGSLBtn.addEventListener('click', async () => {
+    const originalLabel = copyWGSLBtn.textContent;
+    try {
+        await copyTextToClipboard(currentWGSL);
+        copyWGSLBtn.textContent = 'COPIED';
+    } catch {
+        copyWGSLBtn.textContent = 'COPY FAILED';
+    }
+    window.setTimeout(() => {
+        copyWGSLBtn.textContent = originalLabel;
+    }, 1400);
+});
+
+document.getElementById('minifyWGSL').addEventListener('change', () => {
+    if (document.getElementById('renderMode').value === 'gpu') {
+        compileAndRun();
+    }
+});
 
 
 
@@ -384,7 +430,8 @@ window.compileAndRun = async function () {
             const { BrowserGPUExecutor } = await loadGPUExecutorModule();
             if (!isCurrentSession(sessionId)) return;
 
-            const result = compileGasmIntegrator(binary);
+            const minify = document.getElementById('minifyWGSL').checked;
+            const result = compileGasmIntegrator(binary, { minify });
             if (!isCurrentSession(sessionId)) return;
 
             // Populate Compiler Results with both AS and Gasm output
@@ -397,10 +444,7 @@ window.compileAndRun = async function () {
             }
 
             currentWGSL = result.wgsl;
-            const wgslCodeElement = document.getElementById('wgslCodeElement');
-            wgslCodeElement.textContent = currentWGSL;
-            Prism.highlightElement(wgslCodeElement);
-            updateReadonlyLineNumbers(currentWGSL, document.getElementById('wgslLineNumbers'));
+            updateWGSLDisplay(currentWGSL);
 
             // Create fresh executor
             nextExecutor = new BrowserGPUExecutor();

@@ -7,12 +7,16 @@ export const DEFAULT_GASM_COMPILE_OPTIONS = {
 };
 
 /**
- * Gasm 0.5 integrator compile path: prepareModule + compileWithRuntimeInfo.
+ * Gasm integrator compile path: prepareModule + compileWithRuntimeInfo.
  * Retries with specVersion "0.1" when compile-time f64 demotion is required
  * but the Wasm module has no static f64 types for prepareModule to detect.
  */
 export function compileGasmIntegrator(wasmBytes, options = {}) {
     const opts = { ...DEFAULT_GASM_COMPILE_OPTIONS, ...options };
+    if (opts.minify) {
+        opts.optimize = true;
+        opts.sourceMapping = false;
+    }
     let result = compileWithRuntimeInfo(wasmBytes, opts);
     if (result.ok) return result;
 

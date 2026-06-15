@@ -156,11 +156,20 @@
                     <pre id="watCodePre"
                         class="language-wasm readonly-code-pre"><code class="language-wasm" id="watCodeElement"></code></pre>
                 </div>
-                <div id="tab-wgsl" class="readonly-tab-wrapper" style="display: none;" role="tabpanel"
+                <div id="tab-wgsl" class="readonly-tab-wrapper wgsl-tab" style="display: none;" role="tabpanel"
                     aria-labelledby="btn-wgsl">
-                    <div id="wgslLineNumbers" class="readonly-line-numbers"></div>
-                    <pre id="wgslCodePre"
-                        class="language-wgsl readonly-code-pre"><code class="language-wgsl" id="wgslCodeElement"></code></pre>
+                    <div class="wgsl-toolbar">
+                        <label class="wgsl-minify-control" for="minifyWGSL">
+                            <input type="checkbox" id="minifyWGSL">
+                            <span>MINIFY OUTPUT</span>
+                        </label>
+                        <button type="button" id="copyWGSLBtn" class="wgsl-tool-btn">COPY WGSL</button>
+                    </div>
+                    <div class="readonly-code-layout">
+                        <div id="wgslLineNumbers" class="readonly-line-numbers"></div>
+                        <pre id="wgslCodePre"
+                            class="language-wgsl readonly-code-pre"><code class="language-wgsl" id="wgslCodeElement"></code></pre>
+                    </div>
                 </div>
                 <div id="tab-results" class="results-pane" style="display: none;" role="tabpanel"
                     aria-labelledby="btn-results">

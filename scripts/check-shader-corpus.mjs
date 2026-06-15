@@ -1,7 +1,6 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { basename } from 'node:path';
 
-import { setBrowserCompilerBackend } from '@gasm-compiler/core/browser';
 import { compileString } from 'assemblyscript/dist/asc.js';
 
 import { demoCatalog } from '../shader-source.js';
@@ -30,8 +29,6 @@ for (const [demoId, entry] of catalogEntries) {
     }
     catalogByFile.set(match[1], { demoId, name: entry.name });
 }
-
-setBrowserCompilerBackend('typescript');
 
 let passed = 0;
 for (const shaderFile of shaderFiles) {
@@ -64,6 +61,18 @@ for (const shaderFile of shaderFiles) {
     }
     if (typeof gasmResult.wgsl !== 'string' || gasmResult.wgsl.trim() === '') {
         throw new Error(`${catalogEntry.demoId}: Gasm returned no WGSL text.`);
+    }
+    if (shaderFile === 'starter.as') {
+        const minifiedResult = compileGasmIntegrator(binary, { minify: true });
+        if (!minifiedResult.ok) {
+            const errors = minifiedResult.diagnostics.errors
+                .map(error => `${error.code}: ${error.message}`)
+                .join('\n');
+            throw new Error(`${catalogEntry.demoId}: Minified Gasm compilation failed:\n${errors}`);
+        }
+        if (minifiedResult.wgsl.includes('\n')) {
+            throw new Error(`${catalogEntry.demoId}: Minified WGSL was not emitted on one line.`);
+        }
     }
 
     passed++;
