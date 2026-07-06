@@ -108,8 +108,9 @@ export const demoCatalog = {
     rippleTank: {
         name: 'Interactive Ripple Tank',
         group: 'persistent',
-        description: 'Pointer-driven wave propagation with caustic lighting.',
+        description: 'Pointer-driven refraction over procedural wet cobblestone.',
         features: ['AUTO PARALLEL', 'PERSISTENT', 'I16 MEMORY', 'POINTER'],
+        clock: 'step',
         load: () => import('./shaders/interactive_ripple_tank.as?raw'),
     },
     grayScottCoral: {

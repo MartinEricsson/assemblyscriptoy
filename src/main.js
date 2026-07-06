@@ -710,9 +710,11 @@ window.compileAndRun = async function () {
         const wasmF32View = runWasmMemory ? new Float32Array(runWasmMemory.buffer) : null;
         const wasmI32View = runWasmMemory ? new Int32Array(runWasmMemory.buffer) : null;
         const runExecutor = preparedExecutor;
+        const useSteppedClock = getCurrentDemoConfig().clock === 'step';
 
         const startTime = performance.now();
         let frameCount = 0;
+        let dispatchCount = 0;
 
         // ── Double-buffer + zero-allocation architecture ─────────────
         // RAF callback is ALWAYS synchronous — just blits the latest
@@ -737,7 +739,9 @@ window.compileAndRun = async function () {
         // Async GPU dispatch — zero allocation per frame.
         async function dispatchGPU(time) {
             if (!isCurrentSession(sessionId)) return;
-            writeFrameInputs(memoryBufferF32, memoryBufferI32, time);
+            const frameInput = useSteppedClock ? dispatchCount : time;
+            dispatchCount++;
+            writeFrameInputs(memoryBufferF32, memoryBufferI32, frameInput);
             try {
                 // executeFrame: no Maps, no Object.entries, no bind group
                 // recreation, no new arrays, no template-literal keys.
@@ -779,7 +783,9 @@ window.compileAndRun = async function () {
             } else {
                 try {
                     if (!runWasmInstance || !runWasmMemory) return;
-                    writeFrameInputs(wasmF32View, wasmI32View, timeSeconds);
+                    const frameInput = useSteppedClock ? dispatchCount : timeSeconds;
+                    dispatchCount++;
+                    writeFrameInputs(wasmF32View, wasmI32View, frameInput);
                     runWasmInstance.exports.main();
                     copyPixels(new Int32Array(runWasmMemory.buffer));
                     ctx.putImageData(imageData, 0, 0);
