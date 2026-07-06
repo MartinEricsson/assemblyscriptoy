@@ -11,6 +11,7 @@ const shaderFiles = (await readdir(shaderDirectory))
     .filter(file => file.endsWith('.as'))
     .sort();
 const catalogEntries = Object.entries(demoCatalog);
+const MEMORY_PAGES = 64;
 
 if (catalogEntries.length !== shaderFiles.length) {
     throw new Error(
@@ -27,7 +28,7 @@ for (const [demoId, entry] of catalogEntries) {
     if (catalogByFile.has(match[1])) {
         throw new Error(`Shader file "${match[1]}" is registered more than once.`);
     }
-    catalogByFile.set(match[1], { demoId, name: entry.name });
+    catalogByFile.set(match[1], { demoId, ...entry });
 }
 
 let passed = 0;
@@ -38,12 +39,13 @@ for (const shaderFile of shaderFiles) {
     }
 
     const source = await readFile(new URL(shaderFile, shaderDirectory), 'utf8');
-    const { binary, stderr } = await compileString(source, {
+    const { binary, text, stderr } = await compileString(source, {
         optimize: true,
         runtime: 'stub',
-        initialMemory: 16,
-        maximumMemory: 16,
+        initialMemory: MEMORY_PAGES,
+        maximumMemory: MEMORY_PAGES,
         noAssert: true,
+        ...(catalogEntry.assemblyScriptOptions ?? {}),
     });
 
     if (!binary) {
@@ -52,7 +54,7 @@ for (const shaderFile of shaderFiles) {
         );
     }
 
-    const gasmResult = compileGasmIntegrator(binary);
+    const gasmResult = compileGasmIntegrator(binary, catalogEntry.compileOptions);
     if (!gasmResult.ok) {
         const errors = gasmResult.diagnostics.errors
             .map(error => `${error.code}: ${error.message}`)
@@ -61,6 +63,45 @@ for (const shaderFile of shaderFiles) {
     }
     if (typeof gasmResult.wgsl !== 'string' || gasmResult.wgsl.trim() === '') {
         throw new Error(`${catalogEntry.demoId}: Gasm returned no WGSL text.`);
+    }
+    if (!gasmResult.dispatchInfo.isParallelized) {
+        throw new Error(`${catalogEntry.demoId}: Gasm did not parallelize the canonical pixel loop.`);
+    }
+    if (gasmResult.dispatchInfo.workItemsX !== 256 * 256) {
+        throw new Error(
+            `${catalogEntry.demoId}: expected 65,536 work items, got ${gasmResult.dispatchInfo.workItemsX}.`,
+        );
+    }
+
+    if (catalogEntry.demoId === 'precisionJulia') {
+        if (!gasmResult.diagnostics.featuresUsed.usesF64 || !gasmResult.diagnostics.featuresUsed.usesI64) {
+            throw new Error('precisionJulia: expected both f64 and i64 feature detection.');
+        }
+        if (!gasmResult.diagnostics.demotions.some(event => event.kind === 'f64->f32')) {
+            throw new Error('precisionJulia: expected an f64->f32 demotion diagnostic.');
+        }
+    }
+
+    if (catalogEntry.demoId === 'simdKaleidoscope') {
+        const advisoryText = gasmResult.diagnostics.advisories.map(item => item.message).join('\n');
+        if (!advisoryText.includes('gasm:simd:1.0') || !advisoryText.includes('gasm:math:1.0')) {
+            throw new Error('simdKaleidoscope: expected SIMD and math extension advisories.');
+        }
+        if (!gasmResult.wgsl.includes('vec4<f32>')) {
+            throw new Error('simdKaleidoscope: expected vector WGSL output.');
+        }
+    }
+
+    if (catalogEntry.demoId === 'rippleTank') {
+        if (!text.includes('i32.load16_s') || !text.includes('i32.store16')) {
+            throw new Error('rippleTank: expected signed 16-bit load/store instructions.');
+        }
+    }
+
+    if (catalogEntry.demoId === 'grayScottCoral') {
+        if (!text.includes('i32.load16_u') || !text.includes('i32.store16')) {
+            throw new Error('grayScottCoral: expected unsigned 16-bit load/store instructions.');
+        }
     }
     if (shaderFile === 'starter.as') {
         const minifiedResult = compileGasmIntegrator(binary, { minify: true });

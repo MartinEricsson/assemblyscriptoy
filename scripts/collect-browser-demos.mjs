@@ -5,23 +5,10 @@
  * Run: node scripts/collect-browser-demos.mjs
  */
 import { chromium } from "playwright";
+import { demoCatalog } from "../shader-source.js";
 
 const BASE = process.env.PLAYGROUND_URL ?? "http://localhost:3001/";
-const DEMOS = [
-  "starter",
-  "xorTextureZoo",
-  "plasma",
-  "metaballs",
-  "voxelRaycaster",
-  "persistentLife",
-  "persistentHeat",
-  "persistentCyclic",
-  "flagshipSdfScene",
-  "flagshipMandelbrot",
-  "flagshipClouds",
-  "flagshipFire",
-  "cornellBoxGi",
-];
+const DEMOS = Object.keys(demoCatalog);
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage();
@@ -68,7 +55,7 @@ await browser.close();
 
 import { writeFileSync } from "node:fs";
 writeFileSync(
-  "docs/demo-browser-compiler-output-0.3.txt",
+  "docs/demo-browser-compiler-output.txt",
   report
     .map(
       (r) =>

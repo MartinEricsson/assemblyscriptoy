@@ -517,7 +517,7 @@ select { font-family: inherit; color: inherit; }
 .demo-item {
     width: 100%;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
     padding: 8px 10px;
     background: transparent;
@@ -555,6 +555,40 @@ select { font-family: inherit; color: inherit; }
     min-width: 24px;
 }
 .demo-name { flex: 1 1 auto; }
+.demo-copy {
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+}
+.demo-description {
+    color: var(--muted);
+    font-size: 9px;
+    line-height: 1.35;
+    letter-spacing: 0;
+    text-transform: none;
+}
+.demo-features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+}
+.demo-feature {
+    padding: 1px 4px;
+    border: 1px solid var(--rule-2);
+    color: var(--accent);
+    font-size: 8px;
+    line-height: 1.35;
+    letter-spacing: 0.04em;
+}
+.demo-item.active .demo-description,
+.demo-item.active .demo-feature {
+    color: var(--bg);
+}
+.demo-item.active .demo-feature {
+    border-color: rgba(10, 10, 10, 0.45);
+}
 
 .sidebar-footer {
     margin-top: auto;
@@ -592,7 +626,13 @@ select { font-family: inherit; color: inherit; }
 }
 
 @media (min-width: 1200px) {
-    .sidebar { position: static; }
+    .sidebar {
+        position: sticky;
+        top: 14px;
+        align-self: start;
+        max-height: calc(100vh - 120px);
+        overflow-y: auto;
+    }
 }
 
 /* ── CANVAS PANEL ───────────────────────────────────────────── */

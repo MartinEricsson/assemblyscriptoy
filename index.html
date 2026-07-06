@@ -59,55 +59,7 @@
             <div class="sidebar-header">
                 <span class="section-rule">── DEMOS ──────────</span>
             </div>
-            <div class="sidebar-group">
-                <div class="sidebar-group-label">getting started</div>
-                <ul class="demo-list" role="listbox" aria-label="Getting started demos">
-                    <li><button class="demo-item" data-demo="starter" role="option"><span
-                                class="demo-idx">01</span><span class="demo-name">STARTER TEMPLATE</span></button></li>
-                </ul>
-            </div>
-            <div class="sidebar-group">
-                <div class="sidebar-group-label">intermediate</div>
-                <ul class="demo-list" role="listbox" aria-label="Intermediate demos">
-                    <li><button class="demo-item" data-demo="xorTextureZoo" role="option"><span
-                                class="demo-idx">02</span><span class="demo-name">XOR TEXTURE ZOO</span></button></li>
-                    <li><button class="demo-item" data-demo="plasma" role="option"><span
-                                class="demo-idx">03</span><span class="demo-name">PLASMA</span></button></li>
-                    <li><button class="demo-item" data-demo="metaballs" role="option"><span
-                                class="demo-idx">04</span><span class="demo-name">METABALLS</span></button></li>
-                    <li><button class="demo-item" data-demo="voxelRaycaster" role="option"><span
-                                class="demo-idx">05</span><span class="demo-name">VOXEL RAYCASTER</span></button></li>
-                </ul>
-            </div>
-            <div class="sidebar-group">
-                <div class="sidebar-group-label">advanced</div>
-                <ul class="demo-list" role="listbox" aria-label="Advanced demos">
-                    <li><button class="demo-item" data-demo="flagshipSdfScene" role="option"><span
-                                class="demo-idx">06</span><span class="demo-name">RAYMARCHED SDF SCENE</span></button>
-                    </li>
-                    <li><button class="demo-item" data-demo="flagshipMandelbrot" role="option"><span
-                                class="demo-idx">07</span><span class="demo-name">DEEP MANDELBROT ZOOM</span></button>
-                    </li>
-                    <li><button class="demo-item" data-demo="flagshipClouds" role="option"><span
-                                class="demo-idx">08</span><span class="demo-name">VOLUMETRIC CLOUDS</span></button></li>
-                    <li><button class="demo-item" data-demo="flagshipFire" role="option"><span
-                                class="demo-idx">09</span><span class="demo-name">TURBULENT FIRE</span></button></li>
-                    <li><button class="demo-item" data-demo="cornellBoxGi" role="option"><span
-                                class="demo-idx">10</span><span class="demo-name">CORNELL BOX · PATH TRACING</span></button>
-                    </li>
-                </ul>
-            </div>
-            <div class="sidebar-group">
-                <div class="sidebar-group-label">persistent memory</div>
-                <ul class="demo-list" role="listbox" aria-label="Persistent memory demos">
-                    <li><button class="demo-item" data-demo="persistentLife" role="option"><span
-                                class="demo-idx">11</span><span class="demo-name">PERSISTENT LIFE</span></button></li>
-                    <li><button class="demo-item" data-demo="persistentHeat" role="option"><span
-                                class="demo-idx">12</span><span class="demo-name">PERSISTENT HEAT</span></button></li>
-                    <li><button class="demo-item" data-demo="persistentCyclic" role="option"><span
-                                class="demo-idx">13</span><span class="demo-name">PERSISTENT CYCLIC</span></button></li>
-                </ul>
-            </div>
+            <div id="demoGroups"></div>
             <div class="sidebar-footer">
                 <div class="kbd-hint"><span class="kbd">⌘</span><span class="kbd">↵</span> run &nbsp; <span
                         class="kbd">⌘</span><span class="kbd">.</span> stop</div>
@@ -215,12 +167,13 @@ store&lt;i32&gt;(offset + 8, blue);</code></pre>
                             demotions.</p>
 
                         <h3>&gt; MEMORY &amp; TYPE NOTES</h3>
-                        <p>The app uses 1 MiB of linear memory: bytes 0–15 are runtime inputs, bytes
+                        <p>The app uses 1 MiB of linear memory: bytes 0–3 contain frame time, bytes
+                            4–11 contain pointer coordinates, bytes 12–15 contain pointer buttons, bytes
                             16–786447 hold RGB output, and the remaining bytes can keep persistent state.
                             Prefer <code>i32</code>, <code>u32</code>, and <code>f32</code>.
-                            <code>i64</code> and <code>f64</code> may be demoted by Gasm. The current
-                            Gasm-compatible subset does not support <code>Math.sin</code> or
-                            <code>Math.cos</code>; the Starter Template includes <code>triWave()</code>.</p>
+                            <code>i64</code> and <code>f64</code> may be demoted by Gasm. Demos can opt
+                            into direct GPU math through <code>@external("gasm", "...")</code> imports;
+                            the Starter Template includes <code>triWave()</code> when no extension is needed.</p>
 
                         <h3>&gt; SHORTCUTS</h3>
                         <p><code>Cmd/Ctrl + Enter</code> runs, <code>Cmd/Ctrl + .</code> stops, and
@@ -241,21 +194,8 @@ store&lt;i32&gt;(offset + 8, blue);</code></pre>
         </footer>
 
         <!-- Hidden-but-functional legacy control (bridged from sidebar) -->
-        <select id="demoSelect" class="visually-hidden" onchange="loadDemo(this.value)" aria-hidden="true" tabindex="-1">
-            <option value="starter">Starter Template</option>
-            <option value="xorTextureZoo">XOR Texture Zoo</option>
-            <option value="plasma">Plasma</option>
-            <option value="metaballs">Metaballs</option>
-            <option value="voxelRaycaster">Voxel Raycaster</option>
-            <option value="flagshipSdfScene">Raymarched SDF Scene</option>
-            <option value="flagshipMandelbrot">Deep Mandelbrot Zoom</option>
-            <option value="flagshipClouds">Volumetric Clouds</option>
-            <option value="flagshipFire">Turbulent Fire</option>
-            <option value="cornellBoxGi">Cornell Box (Path Tracing)</option>
-            <option value="persistentLife">Persistent Life</option>
-            <option value="persistentHeat">Persistent Heat Diffusion</option>
-            <option value="persistentCyclic">Persistent Cyclic Automata</option>
-        </select>
+        <select id="demoSelect" class="visually-hidden" onchange="loadDemo(this.value)" aria-hidden="true"
+            tabindex="-1"></select>
     </div>
 
     <script type="module" src="/src/main.js"></script>

@@ -1,4 +1,4 @@
-import { demoCatalog, loadDemoSource } from '../shader-source.js';
+import { demoCatalog, demoGroups, loadDemoSource } from '../shader-source.js';
 import Prism from './prism.js';
 import 'prismjs/themes/prism-tomorrow.css';
 import {
@@ -7,16 +7,18 @@ import {
     loadGPUExecutorModule,
 } from './load-compilers.js';
 
-const demoLibrary = Object.fromEntries(
-    Object.entries(demoCatalog).map(([id, { name }]) => [id, { name }]),
-);
+const demoLibrary = demoCatalog;
 
 const INITIAL_WGSL = '// Click Compile & Run to generate WGSL from your AssemblyScript shader.';
+const DEFAULT_DEMO = 'flagshipSdfScene';
+const MEMORY_BYTES = 4 * 1024 * 1024;
+const MEMORY_PAGES = MEMORY_BYTES / 65536;
 
 let currentWGSL = INITIAL_WGSL;
 let currentSource = '';
 let currentDemo = 'starter';
 let currentDemoLoadId = 0;
+const pointerInput = { x: -1, y: -1, buttons: 0 };
 
 function escapeHTML(value) {
     return String(value)
@@ -24,6 +26,171 @@ function escapeHTML(value) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 }
+
+function renderDemoNavigation() {
+    const groupsElement = document.getElementById('demoGroups');
+    const selectElement = document.getElementById('demoSelect');
+    const entries = Object.entries(demoCatalog);
+    let demoIndex = 0;
+
+    groupsElement.innerHTML = Object.entries(demoGroups).map(([groupId, label]) => {
+        const groupEntries = entries.filter(([, demo]) => demo.group === groupId);
+        if (groupEntries.length === 0) return '';
+        const items = groupEntries.map(([id, demo]) => {
+            demoIndex++;
+            const features = demo.features
+                .map(feature => `<span class="demo-feature">${escapeHTML(feature)}</span>`)
+                .join('');
+            return `<li><button class="demo-item" data-demo="${escapeHTML(id)}" role="option"
+                title="${escapeHTML(demo.description)}">
+                <span class="demo-idx">${String(demoIndex).padStart(2, '0')}</span>
+                <span class="demo-copy">
+                    <span class="demo-name">${escapeHTML(demo.name)}</span>
+                    <span class="demo-description">${escapeHTML(demo.description)}</span>
+                    <span class="demo-features">${features}</span>
+                </span>
+            </button></li>`;
+        }).join('');
+        return `<div class="sidebar-group">
+            <div class="sidebar-group-label">${escapeHTML(label)}</div>
+            <ul class="demo-list" role="listbox" aria-label="${escapeHTML(label)} demos">${items}</ul>
+        </div>`;
+    }).join('');
+
+    selectElement.innerHTML = entries
+        .map(([id, demo]) => `<option value="${escapeHTML(id)}">${escapeHTML(demo.name)}</option>`)
+        .join('');
+}
+
+renderDemoNavigation();
+
+function slugifyDemo(value) {
+    return String(value)
+        .trim()
+        .replace(/([a-z0-9])([A-Z])/g, '$1-$2')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+}
+
+function getDemoSlug(id) {
+    return demoCatalog[id]?.slug ?? slugifyDemo(id);
+}
+
+function resolveDemoName(value) {
+    const requested = slugifyDemo(value);
+    if (!requested) return DEFAULT_DEMO;
+    if (demoCatalog[value]) return value;
+
+    const exact = Object.entries(demoCatalog).find(([id, demo]) => {
+        return requested === slugifyDemo(id)
+            || requested === slugifyDemo(demo.name)
+            || requested === slugifyDemo(demo.slug ?? '');
+    });
+    if (exact) return exact[0];
+
+    const prefixMatches = Object.entries(demoCatalog).filter(([id, demo]) => {
+        return slugifyDemo(id).startsWith(requested)
+            || slugifyDemo(demo.name).startsWith(requested)
+            || slugifyDemo(demo.slug ?? '').startsWith(requested);
+    });
+    return prefixMatches.length === 1 ? prefixMatches[0][0] : DEFAULT_DEMO;
+}
+
+function getInitialDemoName() {
+    const params = new URLSearchParams(window.location.search);
+    return resolveDemoName(params.get('demo') ?? DEFAULT_DEMO);
+}
+
+function syncDemoQueryParam(demoName) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('demo', getDemoSlug(demoName));
+    window.history.replaceState(null, '', url);
+}
+
+const gasmMathImports = {
+    sin_f32: Math.sin,
+    cos_f32: Math.cos,
+    tan_f32: Math.tan,
+    asin_f32: Math.asin,
+    acos_f32: Math.acos,
+    atan_f32: Math.atan,
+    atan2_f32: Math.atan2,
+    sinh_f32: Math.sinh,
+    cosh_f32: Math.cosh,
+    tanh_f32: Math.tanh,
+    asinh_f32: Math.asinh,
+    acosh_f32: Math.acosh,
+    atanh_f32: Math.atanh,
+    exp_f32: Math.exp,
+    exp2_f32: value => 2 ** value,
+    log_f32: Math.log,
+    log2_f32: Math.log2,
+    pow_f32: Math.pow,
+    sqrt_f32: Math.sqrt,
+    inverseSqrt_f32: value => 1 / Math.sqrt(value),
+    abs_f32: Math.abs,
+    sign_f32: Math.sign,
+    floor_f32: Math.floor,
+    ceil_f32: Math.ceil,
+    trunc_f32: Math.trunc,
+    round_f32: Math.round,
+    fract_f32: value => value - Math.floor(value),
+    min_f32: Math.min,
+    max_f32: Math.max,
+    clamp_f32: (value, low, high) => Math.min(Math.max(value, low), high),
+    saturate_f32: value => Math.min(Math.max(value, 0), 1),
+    mix_f32: (a, b, amount) => a * (1 - amount) + b * amount,
+    step_f32: (edge, value) => value < edge ? 0 : 1,
+    smoothstep_f32: (low, high, value) => {
+        const amount = Math.min(Math.max((value - low) / (high - low), 0), 1);
+        return amount * amount * (3 - 2 * amount);
+    },
+    fma_f32: (a, b, c) => a * b + c,
+    abs_i32: Math.abs,
+    min_i32: Math.min,
+    max_i32: Math.max,
+    clamp_i32: (value, low, high) => Math.min(Math.max(value, low), high),
+};
+
+function getCurrentDemoConfig() {
+    return demoCatalog[currentDemo] ?? demoCatalog.starter;
+}
+
+function writeFrameInputs(f32View, i32View, time) {
+    f32View[0] = time;
+    i32View[1] = pointerInput.x;
+    i32View[2] = pointerInput.y;
+    i32View[3] = pointerInput.buttons;
+}
+
+function updatePointerInput(event) {
+    const canvas = document.getElementById('canvas');
+    const bounds = canvas.getBoundingClientRect();
+    pointerInput.x = Math.max(0, Math.min(255, Math.floor((event.clientX - bounds.left) * 256 / bounds.width)));
+    pointerInput.y = Math.max(0, Math.min(255, Math.floor((event.clientY - bounds.top) * 256 / bounds.height)));
+    pointerInput.buttons = event.buttons;
+}
+
+const outputCanvas = document.getElementById('canvas');
+outputCanvas.addEventListener('pointermove', updatePointerInput);
+outputCanvas.addEventListener('pointerdown', event => {
+    outputCanvas.setPointerCapture?.(event.pointerId);
+    updatePointerInput(event);
+});
+outputCanvas.addEventListener('pointerup', updatePointerInput);
+outputCanvas.addEventListener('pointercancel', () => {
+    pointerInput.x = -1;
+    pointerInput.y = -1;
+    pointerInput.buttons = 0;
+});
+outputCanvas.addEventListener('pointerleave', event => {
+    if (event.buttons === 0) {
+        pointerInput.x = -1;
+        pointerInput.y = -1;
+        pointerInput.buttons = 0;
+    }
+});
 
 // ── Compiler results builder ─────────────────────────────────────
 function buildCompilerResultsHTML({ asStderr, asBinarySize, gasmResult, renderMode }) {
@@ -311,6 +478,7 @@ window.loadDemo = async function (demoName) {
 
     currentDemo = demoName;
     currentSource = source;
+    syncDemoQueryParam(demoName);
     setEditorContent(currentSource);
 
     // Auto-compile
@@ -395,12 +563,14 @@ window.compileAndRun = async function () {
         if (!isCurrentSession(sessionId)) return;
 
         // Compile ONCE
+        const demoConfig = getCurrentDemoConfig();
         const { binary, text, stderr } = await compileString(source, {
             optimize: true,
             runtime: 'stub',
-            initialMemory: 16,
-            maximumMemory: 16,
-            noAssert: true
+            initialMemory: MEMORY_PAGES,
+            maximumMemory: MEMORY_PAGES,
+            noAssert: true,
+            ...(demoConfig.assemblyScriptOptions ?? {}),
         });
         if (!isCurrentSession(sessionId)) return;
 
@@ -431,7 +601,10 @@ window.compileAndRun = async function () {
             if (!isCurrentSession(sessionId)) return;
 
             const minify = document.getElementById('minifyWGSL').checked;
-            const result = compileGasmIntegrator(binary, { minify });
+            const result = compileGasmIntegrator(binary, {
+                ...(demoConfig.compileOptions ?? {}),
+                minify,
+            });
             if (!isCurrentSession(sessionId)) return;
 
             // Populate Compiler Results with both AS and Gasm output
@@ -453,8 +626,13 @@ window.compileAndRun = async function () {
             // GPU buffers, bind group, staging buffer ONCE. The GPU memory
             // buffer remains authoritative between frames; only the small
             // input region is uploaded and the pixel output region is read back.
-            const wgCount = [Math.ceil(256 * 256 / 64), 1, 1];
-            const memorySize = 1024 * 1024;
+            const dispatch = result.dispatchInfo;
+            const wgCount = [
+                Math.max(1, Math.ceil(dispatch.workItemsX / dispatch.workgroupSizeX)),
+                Math.max(1, Math.ceil(dispatch.workItemsY / dispatch.workgroupSizeY)),
+                Math.max(1, Math.ceil(dispatch.workItemsZ / dispatch.workgroupSizeZ)),
+            ];
+            const memorySize = MEMORY_BYTES;
             const inputBytes = 16;
             const outputBytes = 256 * 256 * 3 * 4;
             const memBuf = new Int32Array(memorySize / 4);
@@ -490,7 +668,8 @@ window.compileAndRun = async function () {
                 env: {
                     abort: () => console.error('Wasm aborted'),
                     seed: () => Math.random() * 2147483647,
-                }
+                },
+                gasm: gasmMathImports,
             });
             if (!isCurrentSession(sessionId)) return;
             wasmInstance = instance;
@@ -514,7 +693,7 @@ window.compileAndRun = async function () {
         const width = 256;
         const height = 256;
         const totalPixels = width * height;
-        const memorySize = 1024 * 1024;
+        const memorySize = MEMORY_BYTES;
 
         // Shared buffer so we can write f32 time and i32 pixels into the same memory.
         const memoryBufferBytes = new ArrayBuffer(memorySize);
@@ -529,6 +708,7 @@ window.compileAndRun = async function () {
         const runWasmInstance = wasmInstance;
         const runWasmMemory = wasmMemory;
         const wasmF32View = runWasmMemory ? new Float32Array(runWasmMemory.buffer) : null;
+        const wasmI32View = runWasmMemory ? new Int32Array(runWasmMemory.buffer) : null;
         const runExecutor = preparedExecutor;
 
         const startTime = performance.now();
@@ -557,7 +737,7 @@ window.compileAndRun = async function () {
         // Async GPU dispatch — zero allocation per frame.
         async function dispatchGPU(time) {
             if (!isCurrentSession(sessionId)) return;
-            memoryBufferF32[0] = time;
+            writeFrameInputs(memoryBufferF32, memoryBufferI32, time);
             try {
                 // executeFrame: no Maps, no Object.entries, no bind group
                 // recreation, no new arrays, no template-literal keys.
@@ -599,7 +779,7 @@ window.compileAndRun = async function () {
             } else {
                 try {
                     if (!runWasmInstance || !runWasmMemory) return;
-                    wasmF32View[0] = timeSeconds;
+                    writeFrameInputs(wasmF32View, wasmI32View, timeSeconds);
                     runWasmInstance.exports.main();
                     copyPixels(new Int32Array(runWasmMemory.buffer));
                     ctx.putImageData(imageData, 0, 0);
@@ -676,7 +856,7 @@ window.addEventListener('beforeunload', async () => {
 
 // Auto-load first demo on startup
 window.setTimeout(() => {
-    loadDemo('flagshipSdfScene').catch(console.error);
+    loadDemo(getInitialDemoName()).catch(console.error);
 }, 100);
 
 // ── Shell interactions: status chip, sidebar, drawer, shortcuts ──

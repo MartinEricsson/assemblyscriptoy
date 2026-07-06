@@ -7,8 +7,8 @@ optionally translates the Wasm to WGSL with Gasm, and renders the result on a
 
 Use the app to:
 
-- Explore 13 included demos, from simple color patterns to ray marching, path
-  tracing, and persistent cellular simulations.
+- Explore 24 included demos, from coordinate fundamentals and compiler feature
+  showcases to interactive simulations, ray marching, and progressive path tracing.
 - Edit AssemblyScript directly and see the result after recompiling.
 - Switch between **GPU / Gasm** execution through WebGPU and direct **CPU / Wasm**
   execution.
@@ -71,7 +71,9 @@ shader communicates with the runtime through a 1 MiB linear memory buffer.
 | Region | Byte range | Format |
 |---|---:|---|
 | Frame time | `0..3` | `f32`, approximately one unit per frame at 60 FPS |
-| Reserved inputs | `4..15` | Reserved |
+| Pointer X | `4..7` | `i32`, canvas coordinate 0 through 255, or `-1` |
+| Pointer Y | `8..11` | `i32`, canvas coordinate 0 through 255, or `-1` |
+| Pointer buttons | `12..15` | `i32`, browser pointer button bitmask |
 | Pixel output | `16..786447` | 65,536 RGB pixels, three `i32` values per pixel |
 | Persistent state | `786448..1048575` | Retained between GPU frames |
 
@@ -84,17 +86,18 @@ store<i32>(offset + 4, green);
 store<i32>(offset + 8, blue);
 ```
 
-The persistent state region is primarily demonstrated by Persistent Life,
-Persistent Heat, and Persistent Cyclic. In GPU mode it remains resident between
-frames. Recompiling creates a fresh execution session and resets that state.
+The persistent state region is demonstrated by the cellular simulations,
+Interactive Ripple Tank, Gray-Scott Coral Lab, Flow-Field Ink, and Progressive
+Path Tracer. In GPU mode it remains resident between frames. Recompiling creates
+a fresh execution session and resets that state.
 
 ### Language constraints
 
 - Prefer `i32`, `u32`, and `f32`.
 - `i64` and `f64` may be demoted by Gasm; check **Results** for diagnostics.
-- `Math.sin` and `Math.cos` are not supported by the current Gasm-compatible
-  subset. The starter shader includes `triWave()` as a simple periodic
-  alternative.
+- Direct math built-ins are available through `@external("gasm", "...")`
+  imports when a demo enables the Gasm math extension. The starter shader keeps
+  `triWave()` as a dependency-free periodic alternative.
 - Keep the entry point named `main` with no parameters and a `void` return type.
 
 ## Local development
@@ -118,10 +121,10 @@ files are loaded on demand, and compilation still happens in the browser.
 ### Add a demo
 
 1. Add an AssemblyScript file under `shaders/`.
-2. Add its lazy import and display name to `demoCatalog` in `shader-source.js`.
-3. Add the matching sidebar button and hidden select option in `index.html`.
+2. Add its lazy import, group, description, feature labels, and any compiler
+   options to `demoCatalog` in `shader-source.js`.
 
-The IDs in all three places must match.
+The sidebar and hidden compatibility select are generated from the catalog.
 
 ### Verification
 
@@ -131,9 +134,9 @@ Run the complete local and CI gate:
 pnpm check
 ```
 
-This checks JavaScript syntax, compiles all 13 shaders through AssemblyScript and
-Gasm, and creates the production bundle. Browser end-to-end tests are not part of
-the gate.
+This checks JavaScript syntax, compiles all 24 shaders through AssemblyScript and
+Gasm, verifies feature-specific compiler behavior, and creates the production
+bundle. Browser end-to-end tests are not part of the gate.
 
 To collect a manual browser report for every demo:
 
