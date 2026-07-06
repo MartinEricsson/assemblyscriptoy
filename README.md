@@ -7,7 +7,7 @@ optionally translates the Wasm to WGSL with Gasm, and renders the result on a
 
 Use the app to:
 
-- Explore 24 included demos, from coordinate fundamentals and compiler feature
+- Explore 25 included demos, from coordinate fundamentals and compiler feature
   showcases to interactive simulations, ray marching, and progressive path tracing.
 - Edit AssemblyScript directly and see the result after recompiling.
 - Switch between **GPU / Gasm** execution through WebGPU and direct **CPU / Wasm**
@@ -134,7 +134,7 @@ Run the complete local and CI gate:
 pnpm check
 ```
 
-This checks JavaScript syntax, compiles all 24 shaders through AssemblyScript and
+This checks JavaScript syntax, compiles all 25 shaders through AssemblyScript and
 Gasm, verifies feature-specific compiler behavior, and creates the production
 bundle. Browser end-to-end tests are not part of the gate.
 

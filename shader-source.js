@@ -84,6 +84,13 @@ export const demoCatalog = {
         features: autoParallel,
         load: () => import('./shaders/voxel_raycaster.as?raw'),
     },
+    tinySphereTracer: {
+        name: 'Tiny Sphere Tracer',
+        group: 'compiler',
+        description: 'A compact JavaScript ray-sphere demo ported to scalar AssemblyScript.',
+        features: ['AUTO PARALLEL', 'RAY TRACE'],
+        load: () => import('./shaders/tiny_sphere_tracer.as?raw'),
+    },
     persistentLife: {
         name: 'Persistent Life',
         group: 'persistent',
