@@ -5,7 +5,7 @@
 //  The canvas is fixed at 256x256 and pixels are row-major:
 //      i = y * 256 + x
 //
-//  The shader reads and writes a 1 MiB linear memory buffer:
+//  The shader reads and writes a 4 MiB linear memory buffer:
 //    bytes 0..3       f32 time, about +1 per frame at 60 FPS
 //    bytes 4..15      reserved; do not use
 //    bytes 16..786447 RGB output, three i32 values per pixel

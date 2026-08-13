@@ -5,6 +5,11 @@ import { compileString } from 'assemblyscript/dist/asc.js';
 
 import { demoCatalog } from '../shader-source.js';
 import { compileGasmIntegrator } from '../src/gasm-integrator.js';
+import {
+    PHOTOREAL_FIELD_SIZE,
+    PHOTOREAL_MESH_MAGIC,
+} from '../src/photoreal-scene-builder.js';
+import { MEMORY_BYTES, createDefaultMemoryLayout } from '../src/runtime-memory-layout.js';
 
 const shaderDirectory = new URL('../shaders/', import.meta.url);
 const shaderFiles = (await readdir(shaderDirectory))
@@ -12,6 +17,7 @@ const shaderFiles = (await readdir(shaderDirectory))
     .sort();
 const catalogEntries = Object.entries(demoCatalog);
 const MEMORY_PAGES = 64;
+const DEFAULT_LAYOUT = createDefaultMemoryLayout(MEMORY_BYTES);
 
 if (catalogEntries.length !== shaderFiles.length) {
     throw new Error(
@@ -71,6 +77,37 @@ for (const shaderFile of shaderFiles) {
         throw new Error(
             `${catalogEntry.demoId}: expected 65,536 work items, got ${gasmResult.dispatchInfo.workItemsX}.`,
         );
+    }
+
+    if (typeof catalogEntry.initializeMemory === 'function') {
+        const memoryI32 = new Int32Array(MEMORY_BYTES / 4);
+        const memoryF32 = new Float32Array(memoryI32.buffer);
+        const summary = catalogEntry.initializeMemory({
+            memoryI32,
+            memoryF32,
+            memoryBytes: MEMORY_BYTES,
+            layout: DEFAULT_LAYOUT,
+        });
+        const stateStart = DEFAULT_LAYOUT.state.byteOffset;
+        const stateEnd = DEFAULT_LAYOUT.state.byteOffset + DEFAULT_LAYOUT.state.byteLength;
+        if (!summary || summary.endOffset > stateEnd) {
+            throw new Error(`${catalogEntry.demoId}: memory initializer exceeded the persistent state region.`);
+        }
+        if (summary.materialOffset % 16 !== 0 || summary.triangleOffset % 16 !== 0 || summary.nodeOffset % 16 !== 0) {
+            throw new Error(`${catalogEntry.demoId}: packed scene offsets must be 16-byte aligned.`);
+        }
+        if (catalogEntry.demoId === 'photorealMeshPathTracer') {
+            const header = stateStart / 4;
+            if (memoryI32[header] !== PHOTOREAL_MESH_MAGIC) {
+                throw new Error('photorealMeshPathTracer: expected packed mesh magic header.');
+            }
+            if (memoryI32[header + 3] < 4000 || memoryI32[header + 4] < 1000) {
+                throw new Error('photorealMeshPathTracer: expected a high-detail triangle mesh and BVH.');
+            }
+            if (memoryI32[header + 9] !== PHOTOREAL_FIELD_SIZE * PHOTOREAL_FIELD_SIZE) {
+                throw new Error('photorealMeshPathTracer: unexpected progressive accumulation cell count.');
+            }
+        }
     }
 
     if (catalogEntry.demoId === 'precisionJulia') {

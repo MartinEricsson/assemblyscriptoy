@@ -7,7 +7,7 @@ optionally translates the Wasm to WGSL with Gasm, and renders the result on a
 
 Use the app to:
 
-- Explore 25 included demos, from coordinate fundamentals and compiler feature
+- Explore 26 included demos, from coordinate fundamentals and compiler feature
   showcases to interactive simulations, ray marching, and progressive path tracing.
 - Edit AssemblyScript directly and see the result after recompiling.
 - Switch between **GPU / Gasm** execution through WebGPU and direct **CPU / Wasm**
@@ -64,7 +64,7 @@ export function main(): void {
 ```
 
 The runtime calls `main()` once per frame. The canvas is always 256 x 256, and the
-shader communicates with the runtime through a 1 MiB linear memory buffer.
+shader communicates with the runtime through a 4 MiB linear memory buffer.
 
 ### Memory layout
 
@@ -75,7 +75,7 @@ shader communicates with the runtime through a 1 MiB linear memory buffer.
 | Pointer Y | `8..11` | `i32`, canvas coordinate 0 through 255, or `-1` |
 | Pointer buttons | `12..15` | `i32`, browser pointer button bitmask |
 | Pixel output | `16..786447` | 65,536 RGB pixels, three `i32` values per pixel |
-| Persistent state | `786448..1048575` | Retained between GPU frames |
+| Persistent state | `786448..4194303` | Retained between GPU frames |
 
 For pixel index `i = y * 256 + x`, write channels in the range 0 through 255:
 
@@ -123,6 +123,8 @@ files are loaded on demand, and compilation still happens in the browser.
 1. Add an AssemblyScript file under `shaders/`.
 2. Add its lazy import, group, description, feature labels, and any compiler
    options to `demoCatalog` in `shader-source.js`.
+3. If the demo needs preloaded GPU-resident data, add an `initializeMemory`
+   hook to its catalog entry and pack data into the persistent state region.
 
 The sidebar and hidden compatibility select are generated from the catalog.
 
@@ -134,7 +136,7 @@ Run the complete local and CI gate:
 pnpm check
 ```
 
-This checks JavaScript syntax, compiles all 25 shaders through AssemblyScript and
+This checks JavaScript syntax, compiles all 26 shaders through AssemblyScript and
 Gasm, verifies feature-specific compiler behavior, and creates the production
 bundle. Browser end-to-end tests are not part of the gate.
 

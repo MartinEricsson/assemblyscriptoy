@@ -167,7 +167,7 @@ store&lt;i32&gt;(offset + 8, blue);</code></pre>
                             demotions.</p>
 
                         <h3>&gt; MEMORY &amp; TYPE NOTES</h3>
-                        <p>The app uses 1 MiB of linear memory: bytes 0–3 contain frame time, bytes
+                        <p>The app uses 4 MiB of linear memory: bytes 0–3 contain frame time, bytes
                             4–11 contain pointer coordinates, bytes 12–15 contain pointer buttons, bytes
                             16–786447 hold RGB output, and the remaining bytes can keep persistent state.
                             Prefer <code>i32</code>, <code>u32</code>, and <code>f32</code>.

@@ -6,13 +6,16 @@ import {
     loadGasmCompiler,
     loadGPUExecutorModule,
 } from './load-compilers.js';
+import {
+    MEMORY_BYTES,
+    MEMORY_PAGES,
+    createDefaultMemoryLayout,
+} from './runtime-memory-layout.js';
 
 const demoLibrary = demoCatalog;
 
 const INITIAL_WGSL = '// Click Compile & Run to generate WGSL from your AssemblyScript shader.';
 const DEFAULT_DEMO = 'flagshipSdfScene';
-const MEMORY_BYTES = 4 * 1024 * 1024;
-const MEMORY_PAGES = MEMORY_BYTES / 65536;
 
 let currentWGSL = INITIAL_WGSL;
 let currentSource = '';
@@ -155,6 +158,16 @@ const gasmMathImports = {
 
 function getCurrentDemoConfig() {
     return demoCatalog[currentDemo] ?? demoCatalog.starter;
+}
+
+async function initializeDemoMemory(demoConfig, memoryI32, memoryF32, memoryBytes, layout) {
+    if (typeof demoConfig.initializeMemory !== 'function') return null;
+    return await demoConfig.initializeMemory({
+        memoryI32,
+        memoryF32,
+        memoryBytes,
+        layout,
+    });
 }
 
 function writeFrameInputs(f32View, i32View, time) {
@@ -633,9 +646,20 @@ window.compileAndRun = async function () {
                 Math.max(1, Math.ceil(dispatch.workItemsZ / dispatch.workgroupSizeZ)),
             ];
             const memorySize = MEMORY_BYTES;
-            const inputBytes = 16;
-            const outputBytes = 256 * 256 * 3 * 4;
+            const layout = createDefaultMemoryLayout(memorySize);
             const memBuf = new Int32Array(memorySize / 4);
+            await initializeDemoMemory(
+                demoConfig,
+                memBuf,
+                new Float32Array(memBuf.buffer),
+                memorySize,
+                layout,
+            );
+            if (!isCurrentSession(sessionId)) {
+                await disposeExecutor(nextExecutor);
+                nextExecutor = null;
+                return;
+            }
             await nextExecutor.prepareAnimation(
                 currentWGSL,
                 memBuf,
@@ -644,14 +668,7 @@ window.compileAndRun = async function () {
                 'i32',
                 wgCount,
                 {
-                    layout: {
-                        inputs: { byteOffset: 0, byteLength: inputBytes },
-                        outputs: { byteOffset: inputBytes, byteLength: outputBytes },
-                        state: {
-                            byteOffset: inputBytes + outputBytes,
-                            byteLength: memorySize - inputBytes - outputBytes,
-                        },
-                    },
+                    layout,
                 },
             );
             if (!isCurrentSession(sessionId)) {
@@ -674,6 +691,15 @@ window.compileAndRun = async function () {
             if (!isCurrentSession(sessionId)) return;
             wasmInstance = instance;
             wasmMemory = instance.exports.memory;
+            const cpuMemoryBytes = wasmMemory.buffer.byteLength;
+            await initializeDemoMemory(
+                demoConfig,
+                new Int32Array(wasmMemory.buffer),
+                new Float32Array(wasmMemory.buffer),
+                cpuMemoryBytes,
+                createDefaultMemoryLayout(cpuMemoryBytes),
+            );
+            if (!isCurrentSession(sessionId)) return;
 
             // Populate Compiler Results for CPU mode
             results.innerHTML = buildCompilerResultsHTML({ asStderr, asBinarySize, gasmResult: null, renderMode });

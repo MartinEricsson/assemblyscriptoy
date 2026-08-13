@@ -10,7 +10,7 @@
 //  clampHeat() prevents sources from growing without bound.
 //
 //  State starts at byte 786448. The two 128x128 buffers consume
-//  131,072 bytes plus metadata and fit inside the 1 MiB memory.
+//  131,072 bytes plus metadata and fit inside the 4 MiB memory.
 //  A magic value distinguishes an initialized zero-temperature
 //  field from fresh memory. Recompiling resets the simulation.
 //

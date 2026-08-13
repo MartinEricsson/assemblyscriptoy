@@ -1,5 +1,7 @@
 // Demo catalog - shader sources are loaded on demand to keep the initial bundle small.
 
+import { initializePhotorealMeshMemory } from './src/photoreal-scene-builder.js';
+
 export const demoGroups = {
     start: 'getting started',
     foundations: 'visual foundations',
@@ -183,6 +185,14 @@ export const demoCatalog = {
         description: 'A high-sample path tracer that computes a fresh estimate each frame.',
         features: autoParallel,
         load: () => import('./shaders/cornell_box_gi.as?raw'),
+    },
+    photorealMeshPathTracer: {
+        name: 'Photoreal Mesh Path Tracer',
+        group: 'advanced',
+        description: 'Progressive product-studio path tracing over packed mesh triangles and a threaded BVH.',
+        features: ['AUTO PARALLEL', 'PERSISTENT', 'PROGRESSIVE', 'BVH'],
+        initializeMemory: initializePhotorealMeshMemory,
+        load: () => import('./shaders/photoreal_mesh_path_tracer.as?raw'),
     },
     progressivePathTracer: {
         name: 'Progressive Path Tracer',
