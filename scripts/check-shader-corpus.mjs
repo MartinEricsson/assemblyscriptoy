@@ -19,30 +19,31 @@ const catalogEntries = Object.entries(demoCatalog);
 const MEMORY_PAGES = 64;
 const DEFAULT_LAYOUT = createDefaultMemoryLayout(MEMORY_BYTES);
 
-if (catalogEntries.length !== shaderFiles.length) {
-    throw new Error(
-        `Shader catalog has ${catalogEntries.length} entries, but shaders/ contains ${shaderFiles.length} .as files.`,
-    );
-}
-
 const catalogByFile = new Map();
 for (const [demoId, entry] of catalogEntries) {
     const match = entry.load.toString().match(/shaders\/([^?'"]+\.as)\?raw/);
     if (!match) {
         throw new Error(`Could not determine the shader file for catalog entry "${demoId}".`);
     }
-    if (catalogByFile.has(match[1])) {
-        throw new Error(`Shader file "${match[1]}" is registered more than once.`);
+    const registrations = catalogByFile.get(match[1]) ?? [];
+    if (registrations.length > 0 && (!entry.sharedSource || registrations.some(item => !item.sharedSource))) {
+        throw new Error(`Shader file "${match[1]}" is registered more than once without sharedSource opt-in.`);
     }
-    catalogByFile.set(match[1], { demoId, ...entry });
+    registrations.push({ demoId, ...entry });
+    catalogByFile.set(match[1], registrations);
+}
+
+for (const shaderFile of shaderFiles) {
+    if (!catalogByFile.has(shaderFile)) {
+        throw new Error(`Shader file "${shaderFile}" is not registered in demoCatalog.`);
+    }
 }
 
 let passed = 0;
-for (const shaderFile of shaderFiles) {
-    const catalogEntry = catalogByFile.get(shaderFile);
-    if (!catalogEntry) {
-        throw new Error(`Shader file "${shaderFile}" is not registered in demoCatalog.`);
-    }
+for (const [demoId, entry] of catalogEntries) {
+    const catalogEntry = { demoId, ...entry };
+    const match = catalogEntry.load.toString().match(/shaders\/([^?'\"]+\.as)\?raw/);
+    const shaderFile = match[1];
 
     const source = await readFile(new URL(shaderFile, shaderDirectory), 'utf8');
     const { binary, text, stderr } = await compileString(source, {
@@ -93,10 +94,10 @@ for (const shaderFile of shaderFiles) {
         if (!summary || summary.endOffset > stateEnd) {
             throw new Error(`${catalogEntry.demoId}: memory initializer exceeded the persistent state region.`);
         }
-        if (summary.materialOffset % 16 !== 0 || summary.triangleOffset % 16 !== 0 || summary.nodeOffset % 16 !== 0) {
-            throw new Error(`${catalogEntry.demoId}: packed scene offsets must be 16-byte aligned.`);
-        }
         if (catalogEntry.demoId === 'photorealMeshPathTracer') {
+            if (summary.materialOffset % 16 !== 0 || summary.triangleOffset % 16 !== 0 || summary.nodeOffset % 16 !== 0) {
+                throw new Error(`${catalogEntry.demoId}: packed scene offsets must be 16-byte aligned.`);
+            }
             const header = stateStart / 4;
             if (memoryI32[header] !== PHOTOREAL_MESH_MAGIC) {
                 throw new Error('photorealMeshPathTracer: expected packed mesh magic header.');
@@ -157,4 +158,4 @@ for (const shaderFile of shaderFiles) {
     console.log(`PASS ${catalogEntry.demoId} (${basename(shaderFile)})`);
 }
 
-console.log(`${passed}/${shaderFiles.length} shaders compiled successfully`);
+console.log(`${passed}/${catalogEntries.length} catalog entries compiled successfully`);

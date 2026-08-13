@@ -11,9 +11,10 @@
   },
   "scripts": {
     "build": "vite build",
-    "check": "pnpm check:syntax && pnpm check:shaders && pnpm check:bundle",
+    "check": "pnpm check:syntax && pnpm check:shaders && pnpm check:pbf && pnpm check:bundle",
     "check:bundle": "vite build",
     "check:shaders": "node scripts/check-shader-corpus.mjs",
+    "check:pbf": "node scripts/check-pbf-invariants.mjs",
     "check:syntax": "find src scripts -type f \\( -name '*.js' -o -name '*.mjs' \\) -print0 | xargs -0 -n1 node --check && node --check shader-source.js",
     "dev": "vite",
     "preview": "vite preview"

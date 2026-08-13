@@ -1,12 +1,17 @@
 // Demo catalog - shader sources are loaded on demand to keep the initial bundle small.
 
 import { initializePhotorealMeshMemory } from './src/photoreal-scene-builder.js';
+import {
+    initializePbfDamBreakMemory,
+    initializePbfHydrostaticMemory,
+} from './src/pbf-scene-builder.js';
 
 export const demoGroups = {
     start: 'getting started',
     foundations: 'visual foundations',
     compiler: 'compiler showcase',
     persistent: 'persistent memory',
+    physics: 'physics',
     advanced: 'advanced rendering',
 };
 
@@ -136,19 +141,39 @@ export const demoCatalog = {
         features: ['AUTO PARALLEL', 'PERSISTENT', 'F32 STATE', 'POINTER'],
         load: () => import('./shaders/flow_field_ink.as?raw'),
     },
+    pbfHydrostaticColumn: {
+        name: 'PBF Hydrostatic Column',
+        group: 'physics',
+        description: 'A 3D Position-Based Fluids equilibrium benchmark using SPH kernels and static boundary particles.',
+        features: ['AUTO PARALLEL', '3D PBF', 'SPH KERNELS', 'PERSISTENT', 'DIAGNOSTICS'],
+        clock: 'step',
+        sharedSource: true,
+        initializeMemory: initializePbfHydrostaticMemory,
+        load: () => import('./shaders/pbf_fluid_dynamics.as?raw'),
+    },
+    pbfDamBreak: {
+        name: 'PBF Dam Break',
+        group: 'physics',
+        description: 'A deterministic 3D dam-break benchmark with staged Jacobi constraints, XSPH viscosity, and diagnostics.',
+        features: ['AUTO PARALLEL', '3D PBF', 'SPH KERNELS', 'PERSISTENT', 'DIAGNOSTICS'],
+        clock: 'step',
+        sharedSource: true,
+        initializeMemory: initializePbfDamBreakMemory,
+        load: () => import('./shaders/pbf_fluid_dynamics.as?raw'),
+    },
+    rigidBallsSdf: {
+        name: 'Rigid Ball SDF Physics',
+        group: 'physics',
+        description: 'Elastic wall-bounce rigid spheres raymarched as signed distance fields.',
+        features: ['AUTO PARALLEL', 'SDF', 'PHYSICS'],
+        load: () => import('./shaders/rigid_balls_sdf.as?raw'),
+    },
     flagshipSdfScene: {
         name: 'Raymarched SDF Scene',
         group: 'advanced',
         description: 'Distance fields, soft shadows, ambient occlusion, fog, and reflection.',
         features: autoParallel,
         load: () => import('./shaders/flagship_sdf_scene.as?raw'),
-    },
-    rigidBallsSdf: {
-        name: 'Rigid Ball SDF Physics',
-        group: 'advanced',
-        description: 'Elastic wall-bounce rigid spheres raymarched as signed distance fields.',
-        features: ['AUTO PARALLEL', 'SDF', 'PHYSICS'],
-        load: () => import('./shaders/rigid_balls_sdf.as?raw'),
     },
     flagshipMandelbrot: {
         name: 'Deep Mandelbrot Zoom',

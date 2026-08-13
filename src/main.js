@@ -21,7 +21,7 @@ let currentWGSL = INITIAL_WGSL;
 let currentSource = '';
 let currentDemo = 'starter';
 let currentDemoLoadId = 0;
-const pointerInput = { x: -1, y: -1, buttons: 0 };
+const pointerInput = { x: -1, y: -1, buttons: 0, pressLatch: 0 };
 
 function escapeHTML(value) {
     return String(value)
@@ -174,7 +174,8 @@ function writeFrameInputs(f32View, i32View, time) {
     f32View[0] = time;
     i32View[1] = pointerInput.x;
     i32View[2] = pointerInput.y;
-    i32View[3] = pointerInput.buttons;
+    i32View[3] = pointerInput.buttons || pointerInput.pressLatch;
+    pointerInput.pressLatch = 0;
 }
 
 function updatePointerInput(event) {
@@ -190,12 +191,16 @@ outputCanvas.addEventListener('pointermove', updatePointerInput);
 outputCanvas.addEventListener('pointerdown', event => {
     outputCanvas.setPointerCapture?.(event.pointerId);
     updatePointerInput(event);
+    // Preserve a short press for one dispatch even when pointerup happens
+    // between animation frames. This retains the existing 16-byte contract.
+    pointerInput.pressLatch = event.buttons || 1;
 });
 outputCanvas.addEventListener('pointerup', updatePointerInput);
 outputCanvas.addEventListener('pointercancel', () => {
     pointerInput.x = -1;
     pointerInput.y = -1;
     pointerInput.buttons = 0;
+    pointerInput.pressLatch = 0;
 });
 outputCanvas.addEventListener('pointerleave', event => {
     if (event.buttons === 0) {

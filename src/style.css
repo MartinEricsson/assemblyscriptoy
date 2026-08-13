@@ -249,7 +249,7 @@ select { font-family: inherit; color: inherit; }
     min-height: 100vh;
     gap: 14px;
     padding: 14px;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto auto auto;
     grid-template-areas:
         "appbar"
@@ -257,6 +257,10 @@ select { font-family: inherit; color: inherit; }
         "editor"
         "sidebar"
         "statusbar";
+}
+
+.app-shell > * {
+    min-width: 0;
 }
 
 .appbar       { grid-area: appbar; }
@@ -374,6 +378,13 @@ select { font-family: inherit; color: inherit; }
     color: var(--fg);
     border-color: var(--bg);
     box-shadow: 3px 3px 0 var(--accent);
+}
+
+@media (max-width: 599px) {
+    .appbar-left { gap: 8px; }
+    .logo { font-size: 16px; }
+    .logo-mark { font-size: 14px; }
+    .appbar-subtitle { display: none; }
 }
 
 /* In appbar: invert btn defaults so they read on the light bar */
@@ -670,6 +681,7 @@ select { font-family: inherit; color: inherit; }
     image-rendering: crisp-edges;
     will-change: contents;
     contain: strict;
+    touch-action: none;
 }
 
 .canvas-scanlines {
