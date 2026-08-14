@@ -1,18 +1,15 @@
 // ============================================================
-//  8K CELL-OWNED GRID SPH
+//  8K Cell-Owned Grid SPH - raymarched liquid
 // ============================================================
-//  This demo stays entirely inside the AssemblyScript -> Wasm -> Gasm ->
-//  WGSL pipeline. It avoids atomics by reversing ownership: one invocation
-//  owns each uniform-grid cell and scans the particles to fill that cell's
-//  compact bucket. The same rule builds the 32^3 density field: one
-//  invocation owns one voxel and gathers nearby particles through the grid.
+//  8,192 fluid particles fall under gravity inside a 3D tank and flow
+//  around a raised solid sphere. Smoothed density, pressure, viscosity,
+//  and boundary collisions give the particle cloud its liquid motion.
 //
-//  The playground has one global dispatch per animation tick, so barriers
-//  between SPH stages are expressed as persistent phases across ticks:
-//    bootstrap grid -> density -> integrate -> rebuild grid -> field -> render
-//  Completed particle, grid, and field buffers remain GPU-resident throughout.
-//  Rendering raymarches only the flat linear-memory density field; it never
-//  performs a pixels-times-particles scan.
+//  A uniform grid limits each SPH query to nearby cells. Every cell owns
+//  its compact particle list, avoiding competing writes during grid
+//  construction. For rendering, the particles are reconstructed as a
+//  smooth 32^3 density volume and raymarched as one continuous water
+//  surface with lighting, reflections, and soft merged edges.
 // ============================================================
 
 const WIDTH: i32 = 256;
@@ -386,13 +383,17 @@ function buildDensityVoxel(positionBase: i32, voxel: i32): void {
 }
 
 function loadField(x: i32, y: i32, z: i32): f32 {
-  return load<f32>(fieldAddress(clampI(x, 0, FIELD_RES - 1), clampI(y, 0, FIELD_RES - 1), clampI(z, 0, FIELD_RES - 1)));
+  if (x < 0 || x >= FIELD_RES || y < 0 || y >= FIELD_RES || z < 0 || z >= FIELD_RES) return 0.0;
+  return load<f32>(fieldAddress(x, y, z));
 }
 
 function sampleField(x: f32, y: f32, z: f32): f32 {
-  const ux: f32 = clampF((x - DOMAIN_MIN_X) / (DOMAIN_MAX_X - DOMAIN_MIN_X), 0.0, 0.9999) * <f32>FIELD_RES - 0.5;
-  const uy: f32 = clampF((y - DOMAIN_MIN_Y) / (DOMAIN_MAX_Y - DOMAIN_MIN_Y), 0.0, 0.9999) * <f32>FIELD_RES - 0.5;
-  const uz: f32 = clampF((z - DOMAIN_MIN_Z) / (DOMAIN_MAX_Z - DOMAIN_MIN_Z), 0.0, 0.9999) * <f32>FIELD_RES - 0.5;
+  if (x < DOMAIN_MIN_X || x > DOMAIN_MAX_X
+      || y < DOMAIN_MIN_Y || y > DOMAIN_MAX_Y
+      || z < DOMAIN_MIN_Z || z > DOMAIN_MAX_Z) return 0.0;
+  const ux: f32 = (x - DOMAIN_MIN_X) / (DOMAIN_MAX_X - DOMAIN_MIN_X) * <f32>FIELD_RES - 0.5;
+  const uy: f32 = (y - DOMAIN_MIN_Y) / (DOMAIN_MAX_Y - DOMAIN_MIN_Y) * <f32>FIELD_RES - 0.5;
+  const uz: f32 = (z - DOMAIN_MIN_Z) / (DOMAIN_MAX_Z - DOMAIN_MIN_Z) * <f32>FIELD_RES - 0.5;
   const x0: i32 = <i32>Mathf.floor(ux);
   const y0: i32 = <i32>Mathf.floor(uy);
   const z0: i32 = <i32>Mathf.floor(uz);
