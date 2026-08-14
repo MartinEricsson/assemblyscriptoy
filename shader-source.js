@@ -147,6 +147,15 @@ export const demoCatalog = {
         initializeMemory: initializePbfHydrostaticMemory,
         load: () => import('./shaders/pbf_fluid_dynamics.as?raw'),
     },
+    compilerGridSph: {
+        name: '8K Compiler Grid SPH',
+        slug: '8k-compiler-grid-sph',
+        group: 'physics',
+        description: '8,192 SPH particles use a compiler-generated cell-owned grid and linear-memory density raymarcher.',
+        features: ['AUTO PARALLEL', '8K SPH', 'CELL-OWNED GRID', 'VOLUME RAYMARCH', 'PERSISTENT'],
+        clock: 'step',
+        load: () => import('./shaders/grid_sph.as?raw'),
+    },
     rigidBallsSdf: {
         name: 'Rigid Ball SDF Physics',
         group: 'physics',

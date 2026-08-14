@@ -12,7 +12,12 @@ import {
 import { MEMORY_BYTES, createDefaultMemoryLayout } from '../src/runtime-memory-layout.js';
 
 const shaderDirectory = new URL('../shaders/', import.meta.url);
-const shaderFiles = (await readdir(shaderDirectory))
+const shaderDirectoryFiles = await readdir(shaderDirectory);
+const nativeWgslFiles = shaderDirectoryFiles.filter(file => file.endsWith('.wgsl'));
+if (nativeWgslFiles.length > 0) {
+    throw new Error(`Handwritten WGSL demos are not allowed: ${nativeWgslFiles.join(', ')}`);
+}
+const shaderFiles = shaderDirectoryFiles
     .filter(file => file.endsWith('.as'))
     .sort();
 const catalogEntries = Object.entries(demoCatalog);
@@ -73,6 +78,26 @@ for (const [demoId, entry] of catalogEntries) {
     }
     if (!gasmResult.dispatchInfo.isParallelized) {
         throw new Error(`${catalogEntry.demoId}: Gasm did not parallelize the canonical pixel loop.`);
+    }
+
+    if (catalogEntry.demoId === 'compilerGridSph') {
+        for (const requiredSource of [
+            'const PARTICLE_COUNT: i32 = 8192;',
+            'function buildGridCell(',
+            'function buildDensityVoxel(',
+            'function renderPixel(',
+            'const DENSITY_FIELD:',
+        ]) {
+            if (!source.includes(requiredSource)) {
+                throw new Error(`${catalogEntry.demoId}: missing compiler-native SPH contract ${requiredSource}`);
+            }
+        }
+        if (source.includes('atomic.') || /atomic(Add|Load|Store)|atomic</.test(gasmResult.wgsl)) {
+            throw new Error(`${catalogEntry.demoId}: cell-owned SPH unexpectedly requires generated atomics.`);
+        }
+        if (catalogEntry.execution || catalogEntry.sourceType) {
+            throw new Error(`${catalogEntry.demoId}: compiler-native SPH must use the default AssemblyScript/Gasm path.`);
+        }
     }
     if (gasmResult.dispatchInfo.workItemsX !== 256 * 256) {
         throw new Error(
