@@ -1,8 +1,8 @@
 // ============================================================
 //  3D Position-Based Fluids (SPH kernels)
 // ============================================================
-//  One source powers two deterministic benchmark entries. The catalog
-//  initializer selects either a hydrostatic column or a dam break.
+//  A deterministic hydrostatic-column benchmark with a dense 25 x 14 x 10
+//  particle lattice.
 //
 //  The host intentionally performs one global compute dispatch per frame,
 //  so a physical step is staged across ten rendered frames:
@@ -16,6 +16,11 @@
 //  Artificial pressure suppresses tensile clumping and XSPH viscosity is
 //  applied during finalization. Neighbor search is deliberately all-pairs:
 //  this keeps the demo inside the existing single-dispatch architecture.
+//  An analytic raised-sphere constraint is projected after prediction and
+//  every Jacobi correction so particles cannot tunnel through the obstacle.
+//  The beauty view accumulates projected compact-support kernels into a
+//  screen-space metaball field, blending particle normals into one liquid
+//  surface without an additional all-particle rendering pass.
 //
 //  Hold the pointer over the scene to orbit. Hold the VIEW control in the
 //  upper-right to cycle beauty, density error, lambda, velocity, and
@@ -39,7 +44,7 @@ const CAMERA_PITCH_OFFSET: i32 = STATE_OFFSET + 24;
 const MEAN_ERROR_OFFSET: i32 = STATE_OFFSET + 28;
 const MAX_ERROR_OFFSET: i32 = STATE_OFFSET + 32;
 
-const FLUID_COUNT: i32 = 128;
+const FLUID_COUNT: i32 = 3750;
 const BOUNDARY_COUNT: i32 = 513;
 const HEADER_BYTES: i32 = 64;
 const VEC3_BYTES: i32 = FLUID_COUNT * 12;
@@ -53,8 +58,6 @@ const NEIGHBOR_COUNT: i32 = LAMBDA + FLUID_COUNT * 4;
 const BOUNDARY_PSI: i32 = NEIGHBOR_COUNT + FLUID_COUNT * 4;
 const COMMITTED_ALT: i32 = BOUNDARY_PSI + BOUNDARY_COUNT * 4;
 
-const SCENE_HYDROSTATIC: i32 = 0;
-const SCENE_DAM_BREAK: i32 = 1;
 const VIEW_BEAUTY: i32 = 0;
 const VIEW_DENSITY: i32 = 1;
 const VIEW_LAMBDA: i32 = 2;
@@ -67,16 +70,16 @@ const TWO_PI: f32 = 6.28318530;
 const DT: f32 = 0.016666667;
 const GRAVITY: f32 = -9.81;
 const REST_DENSITY: f32 = 1000.0;
-const PARTICLE_SPACING: f32 = 0.16;
-const PARTICLE_MASS: f32 = 4.096; // rho0 * spacing^3
+const PARTICLE_SPACING: f32 = 0.05;
+const PARTICLE_MASS: f32 = 0.125; // rho0 * spacing^3
 const H: f32 = 0.32;
 const H2: f32 = H * H;
 const POLY6_COEFF: f32 = 44527.766; // 315 / (64*pi*h^9)
 const SPIKY_GRAD_COEFF: f32 = -13340.213; // -45 / (pi*h^6)
-const LAMBDA_EPSILON: f32 = 80.0;
+const LAMBDA_EPSILON: f32 = 40.0;
 const ARTIFICIAL_PRESSURE_K: f32 = 0.001;
 const ARTIFICIAL_PRESSURE_WQ: f32 = 36.0292; // W(0.3h)
-const XSPH_C: f32 = 0.018;
+const XSPH_C: f32 = 0.07;
 const MAX_CORRECTION: f32 = 0.045;
 const MAX_SPEED: f32 = 6.0;
 
@@ -86,10 +89,14 @@ const DOMAIN_MIN_Y: f32 = -0.84;
 const DOMAIN_MAX_Y: f32 = 0.84;
 const DOMAIN_MIN_Z: f32 = -0.75;
 const DOMAIN_MAX_Z: f32 = 0.75;
+const OBSTACLE_X: f32 = 0.0;
+const OBSTACLE_Y: f32 = -0.42;
+const OBSTACLE_Z: f32 = 0.0;
+const OBSTACLE_RADIUS: f32 = 0.28;
+const OBSTACLE_COLLISION_RADIUS: f32 = 0.32;
 
 const PHASES_PER_STEP: i32 = 10;
-const HYDRO_STEPS: i32 = 180;
-const DAM_STEPS: i32 = 150;
+const HYDRO_STEPS: i32 = 720;
 const HOLD_FRAMES: i32 = 90;
 
 function clampF(value: f32, low: f32, high: f32): f32 {
@@ -142,27 +149,19 @@ function storeVec(base: i32, particle: i32, x: f32, y: f32, z: f32): void {
   store<f32>(vecAddress(base, particle, 2), z);
 }
 
-function initialFluidX(scene: i32, particle: i32): f32 {
-  if (scene == SCENE_DAM_BREAK) {
-    const ix: i32 = particle & 7;
-    return -1.00 + <f32>ix * PARTICLE_SPACING;
-  }
-  const ix: i32 = particle & 3;
-  return (<f32>ix - 1.5) * PARTICLE_SPACING;
+function initialFluidX(particle: i32): f32 {
+  const ix: i32 = particle % 25;
+  return (<f32>ix - 12.0) * PARTICLE_SPACING;
 }
 
-function initialFluidY(scene: i32, particle: i32): f32 {
-  if (scene == SCENE_DAM_BREAK) {
-    const iy: i32 = (particle >> 3) & 3;
-    return -0.72 + <f32>iy * PARTICLE_SPACING;
-  }
-  const iy: i32 = (particle >> 2) & 7;
-  return -0.72 + <f32>iy * PARTICLE_SPACING;
+function initialFluidY(particle: i32): f32 {
+  const iy: i32 = (particle / 25) % 14;
+  return -0.04 + <f32>iy * PARTICLE_SPACING;
 }
 
-function initialFluidZ(scene: i32, particle: i32): f32 {
-  const iz: i32 = particle >> 5;
-  return (<f32>iz - 1.5) * PARTICLE_SPACING;
+function initialFluidZ(particle: i32): f32 {
+  const iz: i32 = particle / 350;
+  return (<f32>iz - 4.5) * PARTICLE_SPACING;
 }
 
 function boundaryX(particle: i32): f32 {
@@ -212,10 +211,10 @@ function spikyGradientScale(r2: f32): f32 {
   return SPIKY_GRAD_COEFF * q * q / r;
 }
 
-function seedState(scene: i32, particle: i32): void {
-  const x: f32 = initialFluidX(scene, particle);
-  const y: f32 = initialFluidY(scene, particle);
-  const z: f32 = initialFluidZ(scene, particle);
+function seedState(particle: i32): void {
+  const x: f32 = initialFluidX(particle);
+  const y: f32 = initialFluidY(particle);
+  const z: f32 = initialFluidZ(particle);
   storeVec(COMMITTED_POS, particle, x, y, z);
   storeVec(COMMITTED_ALT, particle, x, y, z);
   storeVec(POSITION_A, particle, x, y, z);
@@ -240,17 +239,41 @@ function calibrateBoundaryPsi(particle: i32): f32 {
   return kernelSum > 0.0001 ? REST_DENSITY / kernelSum : PARTICLE_MASS;
 }
 
+function storeConstrainedPosition(base: i32, particle: i32, x: f32, y: f32, z: f32): void {
+  let px: f32 = clampF(x, DOMAIN_MIN_X, DOMAIN_MAX_X);
+  let py: f32 = clampF(y, DOMAIN_MIN_Y, DOMAIN_MAX_Y);
+  let pz: f32 = clampF(z, DOMAIN_MIN_Z, DOMAIN_MAX_Z);
+  let dx: f32 = px - OBSTACLE_X;
+  let dy: f32 = py - OBSTACLE_Y;
+  let dz: f32 = pz - OBSTACLE_Z;
+  const distance2: f32 = dx * dx + dy * dy + dz * dz;
+  const radius2: f32 = OBSTACLE_COLLISION_RADIUS * OBSTACLE_COLLISION_RADIUS;
+  if (distance2 < radius2) {
+    if (distance2 > 0.0000001) {
+      const scale: f32 = OBSTACLE_COLLISION_RADIUS / Mathf.sqrt(distance2);
+      dx *= scale;
+      dy *= scale;
+      dz *= scale;
+    } else {
+      dx = 0.0;
+      dy = OBSTACLE_COLLISION_RADIUS;
+      dz = 0.0;
+    }
+    px = OBSTACLE_X + dx;
+    py = OBSTACLE_Y + dy;
+    pz = OBSTACLE_Z + dz;
+  }
+  storeVec(base, particle, px, py, pz);
+}
+
 function predictParticle(committedBase: i32, particle: i32): void {
   const oldX: f32 = loadX(committedBase, particle);
   const oldY: f32 = loadY(committedBase, particle);
   const oldZ: f32 = loadZ(committedBase, particle);
-  const vx: f32 = loadX(VELOCITY, particle) * 0.999;
-  const vy: f32 = loadY(VELOCITY, particle) * 0.999 + GRAVITY * DT;
-  const vz: f32 = loadZ(VELOCITY, particle) * 0.999;
-  const nextX: f32 = clampF(oldX + vx * DT, DOMAIN_MIN_X, DOMAIN_MAX_X);
-  const nextY: f32 = clampF(oldY + vy * DT, DOMAIN_MIN_Y, DOMAIN_MAX_Y);
-  const nextZ: f32 = clampF(oldZ + vz * DT, DOMAIN_MIN_Z, DOMAIN_MAX_Z);
-  storeVec(POSITION_A, particle, nextX, nextY, nextZ);
+  const vx: f32 = loadX(VELOCITY, particle) * 0.995;
+  const vy: f32 = loadY(VELOCITY, particle) * 0.995 + GRAVITY * DT;
+  const vz: f32 = loadZ(VELOCITY, particle) * 0.995;
+  storeConstrainedPosition(POSITION_A, particle, oldX + vx * DT, oldY + vy * DT, oldZ + vz * DT);
 }
 
 function solveDensityLambda(base: i32, particle: i32): void {
@@ -367,13 +390,7 @@ function correctParticle(readBase: i32, writeBase: i32, particle: i32): void {
     correctionY *= correctionScale;
     correctionZ *= correctionScale;
   }
-  storeVec(
-    writeBase,
-    particle,
-    clampF(px + correctionX, DOMAIN_MIN_X, DOMAIN_MAX_X),
-    clampF(py + correctionY, DOMAIN_MIN_Y, DOMAIN_MAX_Y),
-    clampF(pz + correctionZ, DOMAIN_MIN_Z, DOMAIN_MAX_Z),
-  );
+  storeConstrainedPosition(writeBase, particle, px + correctionX, py + correctionY, pz + correctionZ);
 }
 
 function finalizeParticle(oldCommittedBase: i32, newCommittedBase: i32, particle: i32): void {
@@ -518,7 +535,7 @@ function glyphHit(px: i32, py: i32, x: i32, y: i32, code: i32): bool {
 }
 
 function numberGlyphHit(px: i32, py: i32, x: i32, y: i32, value: i32, digits: i32): bool {
-  let divisor: i32 = digits == 3 ? 100 : digits == 2 ? 10 : 1;
+  let divisor: i32 = digits == 4 ? 1000 : digits == 3 ? 100 : digits == 2 ? 10 : 1;
   for (let place: i32 = 0; place < digits; place++) {
     const digit: i32 = (value / divisor) % 10;
     if (glyphHit(px, py, x + place * 6, y, 48 + digit)) return true;
@@ -528,11 +545,10 @@ function numberGlyphHit(px: i32, py: i32, x: i32, y: i32, value: i32, digits: i3
 }
 
 function fixedLabelHit(px: i32, py: i32, x: i32, y: i32, label: i32): bool {
-  // 0 PBF, 1 HYDRO, 2 DAM, 3 STEP, 4 E, 5 VIEW,
-  // 6 BEAUTY, 7 DENS, 8 LAMBDA, 9 VEL, 10 NBRS, 11 N.
+  // 0 PBF, 1 HYDRO, 3 STEP, 4 E, 5 VIEW, 6 BEAUTY, 7 DENS,
+  // 8 LAMBDA, 9 VEL, 10 NBRS, 11 N.
   if (label == 0) return glyphHit(px, py, x, y, 80) || glyphHit(px, py, x + 6, y, 66) || glyphHit(px, py, x + 12, y, 70);
   if (label == 1) return glyphHit(px, py, x, y, 72) || glyphHit(px, py, x + 6, y, 89) || glyphHit(px, py, x + 12, y, 68) || glyphHit(px, py, x + 18, y, 82) || glyphHit(px, py, x + 24, y, 79);
-  if (label == 2) return glyphHit(px, py, x, y, 68) || glyphHit(px, py, x + 6, y, 65) || glyphHit(px, py, x + 12, y, 77);
   if (label == 3) return glyphHit(px, py, x, y, 83) || glyphHit(px, py, x + 6, y, 84) || glyphHit(px, py, x + 12, y, 69) || glyphHit(px, py, x + 18, y, 80);
   if (label == 4) return glyphHit(px, py, x, y, 69);
   if (label == 5) return glyphHit(px, py, x, y, 86) || glyphHit(px, py, x + 6, y, 73) || glyphHit(px, py, x + 12, y, 69) || glyphHit(px, py, x + 18, y, 87);
@@ -544,9 +560,9 @@ function fixedLabelHit(px: i32, py: i32, x: i32, y: i32, label: i32): bool {
   return glyphHit(px, py, x, y, 78);
 }
 
-function hudHit(px: i32, py: i32, scene: i32, view: i32, step: i32, phase: i32): bool {
+function hudHit(px: i32, py: i32, view: i32, step: i32, phase: i32): bool {
   let hit: bool = fixedLabelHit(px, py, 7, 7, 0);
-  hit = hit || fixedLabelHit(px, py, 7, 16, scene == SCENE_DAM_BREAK ? 2 : 1);
+  hit = hit || fixedLabelHit(px, py, 7, 16, 1);
   hit = hit || fixedLabelHit(px, py, 7, 27, 3);
   hit = hit || numberGlyphHit(px, py, 34, 27, step % 1000, 3);
   hit = hit || glyphHit(px, py, 54, 36, 80) || glyphHit(px, py, 60, 36, 48 + phase);
@@ -560,7 +576,7 @@ function hudHit(px: i32, py: i32, scene: i32, view: i32, step: i32, phase: i32):
   hit = hit || numberGlyphHit(px, py, 35, 36, maxError, 2);
   hit = hit || glyphHit(px, py, 48, 36, 37);
   hit = hit || fixedLabelHit(px, py, 7, 45, 11);
-  hit = hit || numberGlyphHit(px, py, 16, 45, FLUID_COUNT, 3);
+  hit = hit || numberGlyphHit(px, py, 16, 45, FLUID_COUNT, 4);
   hit = hit || fixedLabelHit(px, py, 221, 7, 5);
   const viewLabel: i32 = view == 0 ? 6 : view == 1 ? 7 : view == 2 ? 8 : view == 3 ? 9 : 10;
   hit = hit || fixedLabelHit(px, py, view == 2 ? 215 : view == 0 ? 215 : 227, 17, viewLabel);
@@ -584,7 +600,7 @@ function updatePointerControls(pointerX: i32, pointerY: i32, buttons: i32): void
   store<i32>(PREVIOUS_BUTTONS_OFFSET, buttons);
 }
 
-function renderPixel(pixel: i32, displayBase: i32, scene: i32, view: i32, step: i32, phase: i32, resetting: bool): void {
+function renderPixel(pixel: i32, displayBase: i32, view: i32, step: i32, phase: i32, resetting: bool): void {
   const px: i32 = pixel & 255;
   const py: i32 = pixel >> 8;
   const screenX: f32 = (<f32>px + 0.5) / 128.0 - 1.0;
@@ -643,16 +659,44 @@ function renderPixel(pixel: i32, displayBase: i32, scene: i32, view: i32, step: 
     }
   }
 
+  let obstacleDepth: f32 = 10000.0;
+  const obstacleDX: f32 = cameraX - OBSTACLE_X;
+  const obstacleDY: f32 = cameraY - OBSTACLE_Y;
+  const obstacleDZ: f32 = cameraZ - OBSTACLE_Z;
+  const obstacleB: f32 = obstacleDX * rayX + obstacleDY * rayY + obstacleDZ * rayZ;
+  const obstacleC: f32 = obstacleDX * obstacleDX + obstacleDY * obstacleDY + obstacleDZ * obstacleDZ - OBSTACLE_RADIUS * OBSTACLE_RADIUS;
+  const obstacleDiscriminant: f32 = obstacleB * obstacleB - obstacleC;
+  if (obstacleDiscriminant >= 0.0) {
+    const hitDepth: f32 = -obstacleB - Mathf.sqrt(obstacleDiscriminant);
+    if (hitDepth > 0.0) {
+      obstacleDepth = hitDepth;
+      const hitX: f32 = cameraX + rayX * hitDepth;
+      const hitY: f32 = cameraY + rayY * hitDepth;
+      const hitZ: f32 = cameraZ + rayZ * hitDepth;
+      const normalX: f32 = (hitX - OBSTACLE_X) / OBSTACLE_RADIUS;
+      const normalY: f32 = (hitY - OBSTACLE_Y) / OBSTACLE_RADIUS;
+      const normalZ: f32 = (hitZ - OBSTACLE_Z) / OBSTACLE_RADIUS;
+      const obstacleLight: f32 = saturate(0.30 - normalX * 0.28 + normalY * 0.62 - normalZ * 0.34);
+      const obstacleRim: f32 = (1.0 - saturate(-(normalX * rayX + normalY * rayY + normalZ * rayZ))) * 0.18;
+      red = 0.20 + obstacleLight * 0.48 + obstacleRim;
+      green = 0.075 + obstacleLight * 0.20 + obstacleRim * 0.45;
+      blue = 0.035 + obstacleLight * 0.08 + obstacleRim * 0.25;
+    }
+  }
+
   let bestDepth: f32 = 10000.0;
   let bestParticle: i32 = -1;
   let bestWeight: f32 = 0.0;
   let bestNX: f32 = 0.0;
   let bestNY: f32 = 0.0;
+  let metaballField: f32 = 0.0;
+  let metaballNX: f32 = 0.0;
+  let metaballNY: f32 = 0.0;
   const renderRadius: f32 = 0.125;
   for (let j: i32 = 0; j < FLUID_COUNT; j++) {
-    const particleX: f32 = resetting ? initialFluidX(scene, j) : loadX(displayBase, j);
-    const particleY: f32 = resetting ? initialFluidY(scene, j) : loadY(displayBase, j);
-    const particleZ: f32 = resetting ? initialFluidZ(scene, j) : loadZ(displayBase, j);
+    const particleX: f32 = resetting ? initialFluidX(j) : loadX(displayBase, j);
+    const particleY: f32 = resetting ? initialFluidY(j) : loadY(displayBase, j);
+    const particleZ: f32 = resetting ? initialFluidZ(j) : loadZ(displayBase, j);
     const relX: f32 = particleX - cameraX;
     const relY: f32 = particleY - cameraY;
     const relZ: f32 = particleZ - cameraZ;
@@ -667,6 +711,11 @@ function renderPixel(pixel: i32, displayBase: i32, scene: i32, view: i32, step: 
       if (d2 < radius * radius) {
         const radial: f32 = d2 / (radius * radius);
         const weight: f32 = (1.0 - radial) * (1.0 - radial);
+        if (view == VIEW_BEAUTY) {
+          metaballField += weight;
+          metaballNX += dx / radius * weight;
+          metaballNY += dy / radius * weight;
+        }
         const surfaceDepth: f32 = depth - renderRadius * Mathf.sqrt(1.0 - radial);
         if (surfaceDepth < bestDepth) {
           bestDepth = surfaceDepth;
@@ -679,21 +728,38 @@ function renderPixel(pixel: i32, displayBase: i32, scene: i32, view: i32, step: 
     }
   }
 
-  if (bestParticle >= 0) {
-    const nz: f32 = Mathf.sqrt(Mathf.max(0.0, 1.0 - bestNX * bestNX - bestNY * bestNY));
-    const diffuse: f32 = saturate(0.35 - bestNX * 0.32 + bestNY * 0.46 + nz * 0.68);
-    const edge: f32 = 0.48 + bestWeight * 0.52;
+  if (bestParticle >= 0 && bestDepth < obstacleDepth && (view != VIEW_BEAUTY || metaballField > 0.04)) {
+    let surfaceNX: f32 = bestNX;
+    let surfaceNY: f32 = bestNY;
     if (view == VIEW_BEAUTY) {
-      const height: f32 = resetting ? initialFluidY(scene, bestParticle) : loadY(displayBase, bestParticle);
+      surfaceNX = metaballNX / metaballField;
+      surfaceNY = metaballNY / metaballField;
+    }
+    const normal2: f32 = surfaceNX * surfaceNX + surfaceNY * surfaceNY;
+    if (normal2 > 0.96) {
+      const normalScale: f32 = Mathf.sqrt(0.96 / normal2);
+      surfaceNX *= normalScale;
+      surfaceNY *= normalScale;
+    }
+    const nz: f32 = Mathf.sqrt(Mathf.max(0.0, 1.0 - surfaceNX * surfaceNX - surfaceNY * surfaceNY));
+    const diffuse: f32 = saturate(0.35 - surfaceNX * 0.32 + surfaceNY * 0.46 + nz * 0.68);
+    if (view == VIEW_BEAUTY) {
+      const height: f32 = resetting ? initialFluidY(bestParticle) : loadY(displayBase, bestParticle);
       const heightTone: f32 = saturate((height - DOMAIN_MIN_Y) / (DOMAIN_MAX_Y - DOMAIN_MIN_Y));
-      red = (0.035 + diffuse * 0.12 + heightTone * 0.025) * edge;
-      green = (0.23 + diffuse * 0.42 + heightTone * 0.08) * edge;
-      blue = (0.43 + diffuse * 0.50 + heightTone * 0.06) * edge;
+      const alpha: f32 = saturate((metaballField - 0.04) * 4.5);
+      const fresnel: f32 = (1.0 - nz) * (1.0 - nz);
+      let liquidRed: f32 = 0.035 + diffuse * 0.12 + heightTone * 0.025 + fresnel * 0.10;
+      let liquidGreen: f32 = 0.23 + diffuse * 0.42 + heightTone * 0.08 + fresnel * 0.18;
+      let liquidBlue: f32 = 0.43 + diffuse * 0.50 + heightTone * 0.06 + fresnel * 0.25;
       const highlight: f32 = nz > 0.86 ? (nz - 0.86) * 2.8 : 0.0;
-      red += highlight * 0.55;
-      green += highlight * 0.65;
-      blue += highlight * 0.72;
+      liquidRed += highlight * 0.55;
+      liquidGreen += highlight * 0.65;
+      liquidBlue += highlight * 0.72;
+      red = red * (1.0 - alpha) + liquidRed * alpha;
+      green = green * (1.0 - alpha) + liquidGreen * alpha;
+      blue = blue * (1.0 - alpha) + liquidBlue * alpha;
     } else {
+      const edge: f32 = 0.48 + bestWeight * 0.52;
       const value: f32 = propertyValue(view, bestParticle);
       red = colorRamp(value, 0) * (0.38 + diffuse * 0.62) * edge;
       green = colorRamp(value, 1) * (0.38 + diffuse * 0.62) * edge;
@@ -707,7 +773,7 @@ function renderPixel(pixel: i32, displayBase: i32, scene: i32, view: i32, step: 
     green = green * 0.35 + 0.040;
     blue = blue * 0.35 + 0.070;
   }
-  if (hudHit(px, py, scene, view, step, phase)) {
+  if (hudHit(px, py, view, step, phase)) {
     red = 0.76;
     green = 0.91;
     blue = 1.0;
@@ -731,8 +797,7 @@ export function main(): void {
   const pointerX: i32 = load<i32>(4);
   const pointerY: i32 = load<i32>(8);
   const pointerButtons: i32 = load<i32>(12);
-  const scene: i32 = load<i32>(SCENE_OFFSET);
-  const benchmarkSteps: i32 = scene == SCENE_DAM_BREAK ? DAM_STEPS : HYDRO_STEPS;
+  const benchmarkSteps: i32 = HYDRO_STEPS;
   const cycleFrames: i32 = 1 + benchmarkSteps * PHASES_PER_STEP + HOLD_FRAMES;
   const cycleFrame: i32 = frame % cycleFrames;
   // Reset is derived only from the uniform stepped frame. Reading MAGIC here
@@ -751,7 +816,7 @@ export function main(): void {
 
   for (let i: i32 = 0; i < WIDTH * HEIGHT; i++) {
     if (resetting) {
-      if (i < FLUID_COUNT) seedState(scene, i);
+      if (i < FLUID_COUNT) seedState(i);
       if (i < BOUNDARY_COUNT) store<f32>(BOUNDARY_PSI + i * 4, calibrateBoundaryPsi(i));
       if (i == 0) {
         store<i32>(MAGIC_OFFSET, MAGIC);
@@ -783,7 +848,7 @@ export function main(): void {
     if (i == 0) updatePointerControls(pointerX, pointerY, pointerButtons);
     if (testMode == 0) {
       const currentView: i32 = load<i32>(VIEW_MODE_OFFSET);
-      renderPixel(i, displayBase, scene, currentView, step, phase, resetting);
+      renderPixel(i, displayBase, currentView, step, phase, resetting);
     }
   }
 }

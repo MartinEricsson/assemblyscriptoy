@@ -1,10 +1,7 @@
 // Demo catalog - shader sources are loaded on demand to keep the initial bundle small.
 
 import { initializePhotorealMeshMemory } from './src/photoreal-scene-builder.js';
-import {
-    initializePbfDamBreakMemory,
-    initializePbfHydrostaticMemory,
-} from './src/pbf-scene-builder.js';
+import { initializePbfHydrostaticMemory } from './src/pbf-scene-builder.js';
 
 export const demoGroups = {
     start: 'getting started',
@@ -144,21 +141,10 @@ export const demoCatalog = {
     pbfHydrostaticColumn: {
         name: 'PBF Hydrostatic Column',
         group: 'physics',
-        description: 'A 3D Position-Based Fluids equilibrium benchmark using SPH kernels and static boundary particles.',
-        features: ['AUTO PARALLEL', '3D PBF', 'SPH KERNELS', 'PERSISTENT', 'DIAGNOSTICS'],
+        description: 'A 3,500-particle PBF drop flowing around a raised static sphere with a fused metaball surface.',
+        features: ['AUTO PARALLEL', '3D PBF', 'METABALL SURFACE', 'PERSISTENT', 'DIAGNOSTICS'],
         clock: 'step',
-        sharedSource: true,
         initializeMemory: initializePbfHydrostaticMemory,
-        load: () => import('./shaders/pbf_fluid_dynamics.as?raw'),
-    },
-    pbfDamBreak: {
-        name: 'PBF Dam Break',
-        group: 'physics',
-        description: 'A deterministic 3D dam-break benchmark with staged Jacobi constraints, XSPH viscosity, and diagnostics.',
-        features: ['AUTO PARALLEL', '3D PBF', 'SPH KERNELS', 'PERSISTENT', 'DIAGNOSTICS'],
-        clock: 'step',
-        sharedSource: true,
-        initializeMemory: initializePbfDamBreakMemory,
         load: () => import('./shaders/pbf_fluid_dynamics.as?raw'),
     },
     rigidBallsSdf: {

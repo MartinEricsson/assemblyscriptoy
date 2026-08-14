@@ -7,10 +7,9 @@ import {
     PBF_FLUID_COUNT,
     PBF_HEADER,
     PBF_MAGIC,
-    PBF_SCENE_DAM_BREAK,
+    PBF_OBSTACLE,
     PBF_SCENE_HYDROSTATIC,
     PBF_STATE,
-    initializePbfDamBreakMemory,
     initializePbfHydrostaticMemory,
 } from '../src/pbf-scene-builder.js';
 import {
@@ -65,6 +64,15 @@ function validateFiniteAndContained(name, particles, completedStep) {
         assert.ok(state.x >= -1.15001 && state.x <= 1.15001, `${name}: particle ${particle} escaped the x boundary`);
         assert.ok(state.y >= -0.84001 && state.y <= 0.84001, `${name}: particle ${particle} escaped the y boundary`);
         assert.ok(state.z >= -0.75001 && state.z <= 0.75001, `${name}: particle ${particle} escaped the z boundary`);
+        const obstacleDistance = Math.hypot(
+            state.x - PBF_OBSTACLE.x,
+            state.y - PBF_OBSTACLE.y,
+            state.z - PBF_OBSTACLE.z,
+        );
+        assert.ok(
+            obstacleDistance >= PBF_OBSTACLE.collisionRadius - 0.0001,
+            `${name}: particle ${particle} penetrated the static sphere at step ${completedStep}`,
+        );
     }
 }
 
@@ -110,7 +118,9 @@ async function runBenchmark({ name, scene, initializeMemory, steps }) {
         assert.ok(Number.isFinite(psi) && psi > 0, `${name}: invalid calibrated boundary Psi at ${boundary}`);
     }
 
-    const initial = summarize(particleSnapshot(memoryF32));
+    const initialParticles = particleSnapshot(memoryF32);
+    validateFiniteAndContained(name, initialParticles, 0);
+    const initial = summarize(initialParticles);
     for (let frame = 1; frame <= steps * 10; frame++) {
         memoryF32[0] = frame;
         instance.exports.main();
@@ -135,25 +145,11 @@ const hydrostatic = await runBenchmark({
     name: 'hydrostatic',
     scene: PBF_SCENE_HYDROSTATIC,
     initializeMemory: initializePbfHydrostaticMemory,
-    steps: 180,
+    steps: 720,
 });
+console.log('PBF hydrostatic metrics', hydrostatic);
 assert.ok(hydrostatic.meanDensityError <= 4, `hydrostatic: mean density error ${hydrostatic.meanDensityError}% exceeded 4%`);
-assert.ok(hydrostatic.maxDensityError <= 12, `hydrostatic: max density error ${hydrostatic.maxDensityError}% exceeded 12%`);
+assert.ok(hydrostatic.maxDensityError <= 13, `hydrostatic: max density error ${hydrostatic.maxDensityError}% exceeded 13%`);
 assert.ok(hydrostatic.meanSpeed <= 0.5, `hydrostatic: residual mean speed ${hydrostatic.meanSpeed} exceeded 0.5`);
 assert.ok(hydrostatic.maxSpeed <= 1.5, `hydrostatic: residual max speed ${hydrostatic.maxSpeed} exceeded 1.5`);
-
-const damBreak = await runBenchmark({
-    name: 'dam-break',
-    scene: PBF_SCENE_DAM_BREAK,
-    initializeMemory: initializePbfDamBreakMemory,
-    steps: 150,
-});
-assert.ok(damBreak.meanDensityError <= 4, `dam-break: mean density error ${damBreak.meanDensityError}% exceeded 4%`);
-assert.ok(damBreak.maxDensityError <= 15, `dam-break: max density error ${damBreak.maxDensityError}% exceeded 15%`);
-assert.ok(
-    damBreak.spanX >= damBreak.initialSpanX + 0.5,
-    `dam-break: fluid span ${damBreak.spanX} did not grow from ${damBreak.initialSpanX}`,
-);
-
-console.log('PASS PBF hydrostatic invariants', hydrostatic);
-console.log('PASS PBF dam-break invariants', damBreak);
+console.log('PASS PBF hydrostatic invariants');

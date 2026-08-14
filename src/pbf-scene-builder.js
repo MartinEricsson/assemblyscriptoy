@@ -1,7 +1,12 @@
 export const PBF_SCENE_HYDROSTATIC = 0;
-export const PBF_SCENE_DAM_BREAK = 1;
 
-export const PBF_FLUID_COUNT = 128;
+export const PBF_FLUID_COUNT = 3500;
+export const PBF_OBSTACLE = Object.freeze({
+    x: 0,
+    y: -0.42,
+    z: 0,
+    collisionRadius: 0.32,
+});
 export const PBF_HEADER_BYTES = 64;
 export const PBF_MAGIC = 0x50424633; // PBF3
 
@@ -29,21 +34,16 @@ export const PBF_STATE = Object.freeze({
     committedAlternate: PBF_HEADER_BYTES + PBF_FLUID_COUNT * 15 * 4 + 513 * 4,
 });
 
-function createPbfMemoryInitializer(scene) {
-    return ({ memoryI32, layout }) => {
-        const stateByteOffset = layout.state.byteOffset;
-        const stateWordOffset = stateByteOffset / 4;
-        memoryI32[stateWordOffset + PBF_HEADER.magic / 4] = 0;
-        memoryI32[stateWordOffset + PBF_HEADER.scene / 4] = scene;
-        memoryI32[stateWordOffset + PBF_HEADER.testMode / 4] = 0;
-        memoryI32[stateWordOffset + PBF_HEADER.viewMode / 4] = 0;
-        memoryI32[stateWordOffset + PBF_HEADER.previousButtons / 4] = 0;
+export function initializePbfHydrostaticMemory({ memoryI32, layout }) {
+    const stateByteOffset = layout.state.byteOffset;
+    const stateWordOffset = stateByteOffset / 4;
+    memoryI32[stateWordOffset + PBF_HEADER.magic / 4] = 0;
+    memoryI32[stateWordOffset + PBF_HEADER.scene / 4] = PBF_SCENE_HYDROSTATIC;
+    memoryI32[stateWordOffset + PBF_HEADER.testMode / 4] = 0;
+    memoryI32[stateWordOffset + PBF_HEADER.viewMode / 4] = 0;
+    memoryI32[stateWordOffset + PBF_HEADER.previousButtons / 4] = 0;
 
-        return {
-            endOffset: stateByteOffset + PBF_STATE.committedAlternate + PBF_FLUID_COUNT * 3 * 4,
-        };
+    return {
+        endOffset: stateByteOffset + PBF_STATE.committedAlternate + PBF_FLUID_COUNT * 3 * 4,
     };
 }
-
-export const initializePbfHydrostaticMemory = createPbfMemoryInitializer(PBF_SCENE_HYDROSTATIC);
-export const initializePbfDamBreakMemory = createPbfMemoryInitializer(PBF_SCENE_DAM_BREAK);
