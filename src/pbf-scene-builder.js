@@ -1,6 +1,6 @@
 export const PBF_SCENE_HYDROSTATIC = 0;
 
-export const PBF_FLUID_COUNT = 3500;
+export const PBF_FLUID_COUNT = 3800;
 export const PBF_OBSTACLE = Object.freeze({
     x: 0,
     y: -0.42,

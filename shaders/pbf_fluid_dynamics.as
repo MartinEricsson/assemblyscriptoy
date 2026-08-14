@@ -1,8 +1,8 @@
 // ============================================================
 //  3D Position-Based Fluids (SPH kernels)
 // ============================================================
-//  A deterministic hydrostatic-column benchmark with a dense 25 x 14 x 10
-//  particle lattice.
+//  A deterministic hydrostatic-column benchmark with 3,800 densely packed
+//  fluid particles.
 //
 //  The host intentionally performs one global compute dispatch per frame,
 //  so a physical step is staged across ten rendered frames:
@@ -44,7 +44,7 @@ const CAMERA_PITCH_OFFSET: i32 = STATE_OFFSET + 24;
 const MEAN_ERROR_OFFSET: i32 = STATE_OFFSET + 28;
 const MAX_ERROR_OFFSET: i32 = STATE_OFFSET + 32;
 
-const FLUID_COUNT: i32 = 3750;
+const FLUID_COUNT: i32 = 3800;
 const BOUNDARY_COUNT: i32 = 513;
 const HEADER_BYTES: i32 = 64;
 const VEC3_BYTES: i32 = FLUID_COUNT * 12;

@@ -141,7 +141,7 @@ export const demoCatalog = {
     pbfHydrostaticColumn: {
         name: 'PBF Hydrostatic Column',
         group: 'physics',
-        description: 'A 3,500-particle PBF drop flowing around a raised static sphere with a fused metaball surface.',
+        description: 'A 3,800-particle PBF drop flowing around a raised static sphere with a fused metaball surface.',
         features: ['AUTO PARALLEL', '3D PBF', 'METABALL SURFACE', 'PERSISTENT', 'DIAGNOSTICS'],
         clock: 'step',
         initializeMemory: initializePbfHydrostaticMemory,

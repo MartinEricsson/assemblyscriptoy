@@ -9,6 +9,7 @@ import {
     PHOTOREAL_FIELD_SIZE,
     PHOTOREAL_MESH_MAGIC,
 } from '../src/photoreal-scene-builder.js';
+import { PBF_FLUID_COUNT } from '../src/pbf-scene-builder.js';
 import { MEMORY_BYTES, createDefaultMemoryLayout } from '../src/runtime-memory-layout.js';
 
 const shaderDirectory = new URL('../shaders/', import.meta.url);
@@ -97,6 +98,19 @@ for (const [demoId, entry] of catalogEntries) {
         }
         if (catalogEntry.execution || catalogEntry.sourceType) {
             throw new Error(`${catalogEntry.demoId}: compiler-native SPH must use the default AssemblyScript/Gasm path.`);
+        }
+    }
+    if (catalogEntry.demoId === 'pbfHydrostaticColumn') {
+        const particleCountMatch = source.match(/const FLUID_COUNT: i32 = (\d+);/);
+        if (!particleCountMatch) {
+            throw new Error(`${catalogEntry.demoId}: could not read FLUID_COUNT from the AssemblyScript source.`);
+        }
+        const shaderParticleCount = Number.parseInt(particleCountMatch[1], 10);
+        if (shaderParticleCount !== PBF_FLUID_COUNT) {
+            throw new Error(
+                `${catalogEntry.demoId}: shader FLUID_COUNT (${shaderParticleCount}) does not match `
+                + `the host memory layout (${PBF_FLUID_COUNT}).`,
+            );
         }
     }
     if (gasmResult.dispatchInfo.workItemsX !== 256 * 256) {
