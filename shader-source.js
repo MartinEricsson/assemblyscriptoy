@@ -190,6 +190,13 @@ export const demoCatalog = {
         initializeMemory: initializeRttnwEarthMemory,
         load: () => import('./shaders/rttnw_03_earth.as?raw'),
     },
+    rttnwPerlin: {
+        name: 'Perlin Marble',
+        group: 'nextweek',
+        description: 'Hash-based Perlin turbulence marble on a ground sphere and globe.',
+        features: ['AUTO PARALLEL', 'PERSISTENT', 'PROGRESSIVE'],
+        load: () => import('./shaders/rttnw_04_perlin.as?raw'),
+    },
     persistentLife: {
         name: 'Persistent Life',
         group: 'persistent',
