@@ -98,6 +98,15 @@ export const demoCatalog = {
         features: ['AUTO PARALLEL', 'RAY TRACE'],
         load: () => import('./shaders/tiny_sphere_tracer.as?raw'),
     },
+    simdPacketTracer: {
+        name: 'SIMD Packet Sphere Tracer',
+        slug: 'simd-packet',
+        group: 'compiler',
+        description: 'Four jittered primary rays intersect spheres as f32x4 packets.',
+        features: ['AUTO PARALLEL', 'SIMD', 'RAY PACKET'],
+        assemblyScriptOptions: { enable: ['simd'] },
+        load: () => import('./shaders/simd_packet_tracer.as?raw'),
+    },
     rtowImage: {
         name: 'Output an Image',
         group: 'weekend',

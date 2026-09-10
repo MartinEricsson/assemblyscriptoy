@@ -185,6 +185,34 @@ for (const [demoId, entry] of catalogEntries) {
         }
     }
 
+    if (catalogEntry.demoId === 'simdPacketTracer') {
+        const advisoryText = gasmResult.diagnostics.advisories.map(item => item.message).join('\n');
+        if (!advisoryText.includes('gasm:simd:1.0')) {
+            throw new Error('simdPacketTracer: expected SIMD advisory.');
+        }
+        if (
+            !text.includes('f32x4.mul')
+            || !text.includes('f32x4.add')
+            || !text.includes('f32x4.sub')
+            || !text.includes('f32x4.sqrt')
+        ) {
+            throw new Error('simdPacketTracer: expected f32x4 arithmetic in WAT.');
+        }
+        if (!gasmResult.wgsl.includes('vec4<f32>')) {
+            throw new Error('simdPacketTracer: expected vector WGSL output.');
+        }
+        if (!source.includes('function sphereT4(') || !source.includes('v128.sqrt<f32>')) {
+            throw new Error('simdPacketTracer: expected vectorized sphereT4 kernel.');
+        }
+        if (source.includes('gasmSin') || source.includes('mathExtension')) {
+            throw new Error('simdPacketTracer: SIMD packet tracer must not use math M0.');
+        }
+        const enable = catalogEntry.assemblyScriptOptions && catalogEntry.assemblyScriptOptions.enable;
+        if (!enable || !enable.includes('simd')) {
+            throw new Error('simdPacketTracer: expected assemblyScriptOptions.enable to include simd.');
+        }
+    }
+
     if (catalogEntry.demoId === 'rippleTank') {
         if (!text.includes('i32.load16_s') || !text.includes('i32.store16')) {
             throw new Error('rippleTank: expected signed 16-bit load/store instructions.');
