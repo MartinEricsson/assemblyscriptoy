@@ -224,6 +224,32 @@ for (const [demoId, entry] of catalogEntries) {
             throw new Error('grayScottCoral: expected unsigned 16-bit load/store instructions.');
         }
     }
+
+    if (catalogEntry.demoId === 'tessendorfOcean') {
+        for (const requiredSource of [
+            'const FFT_N: i32 = 256;',
+            'function fftStage(',
+            'function phillips(',
+            'function bitReverse8(',
+        ]) {
+            if (!source.includes(requiredSource)) {
+                throw new Error(`${catalogEntry.demoId}: missing Tessendorf FFT contract ${requiredSource}`);
+            }
+        }
+        if (/atomic\.|atomicAdd/.test(source)) {
+            throw new Error(`${catalogEntry.demoId}: pair-owned FFT unexpectedly uses atomics.`);
+        }
+        if (catalogEntry.clock !== 'step' || catalogEntry.execution || catalogEntry.sourceType) {
+            throw new Error(`${catalogEntry.demoId}: Tessendorf ocean must use the stepped AssemblyScript/Gasm path.`);
+        }
+        if (catalogEntry.compileOptions || catalogEntry.assemblyScriptOptions) {
+            throw new Error(`${catalogEntry.demoId}: Tessendorf ocean must not enable M0 or SIMD.`);
+        }
+        if (gasmResult.wgsl.includes('atomic')) {
+            throw new Error(`${catalogEntry.demoId}: generated WGSL must not contain atomics.`);
+        }
+    }
+
     if (shaderFile === 'starter.as') {
         const minifiedResult = compileGasmIntegrator(binary, { minify: true });
         if (!minifiedResult.ok) {

@@ -20,7 +20,7 @@ when done.
 | 006 | Enable compiler-native 100K atomic hash-grid SPH | P1 | XL | 001, 002 | TODO |
 | 007 | Add Ray Tracing: The Next Week as playground demos | P2 | XL | — | DONE |
 | 008 | Add a 4-wide SIMD packet sphere tracer | P1 | M | — | DONE |
-| 009 | Add a staged Tessendorf FFT ocean demo | P1 | L | — | TODO |
+| 009 | Add a staged Tessendorf FFT ocean demo | P1 | L | — | DONE |
 | 010 | Add a compute triangle rasterizer demo | P1 | L | — | TODO |
 | 011 | Add an f64-hot-loop split Mandelbrot demotion demo | P2 | M | — | TODO |
 | 012 | Add a host-baked MLP neural SDF demo | P2 | L | — | TODO |

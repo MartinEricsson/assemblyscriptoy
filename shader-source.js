@@ -107,6 +107,15 @@ export const demoCatalog = {
         assemblyScriptOptions: { enable: ['simd'] },
         load: () => import('./shaders/simd_packet_tracer.as?raw'),
     },
+    tessendorfOcean: {
+        name: 'Tessendorf FFT Ocean',
+        slug: 'fft-ocean',
+        group: 'compiler',
+        description: 'A 256×256 Phillips spectrum inverse-FFT, staged across pair-owned butterfly dispatches.',
+        features: ['AUTO PARALLEL', 'FFT', 'PERSISTENT', 'STAGED DISPATCH'],
+        clock: 'step',
+        load: () => import('./shaders/tessendorf_ocean.as?raw'),
+    },
     rtowImage: {
         name: 'Output an Image',
         group: 'weekend',
