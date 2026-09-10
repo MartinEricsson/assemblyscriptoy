@@ -10,8 +10,10 @@
 //  both outputs. No atomics, no extra exports, no Gerstner fallback.
 //
 //  Height is the real part of the buffer that finished the last
-//  column stage, scaled by 1/N² in the renderer. The displaced
-//  plane is ray-marched with bilinear wrap sampling.
+//  column stage. The unnormalized inverse FFT is the Tessendorf
+//  sum; the renderer applies 4.5 * dk (dk = 2π/PATCH) so the
+//  displaced plane is meters-high, not a millimetre sheet. 1/N²
+//  would flatten the sea into a fresnel gradient.
 // ============================================================
 
 const WIDTH: i32 = 256;
@@ -43,7 +45,8 @@ const PHILLIPS_A: f32 = 0.00035;
 const WIND_X: f32 = 1.0;
 const WIND_Z: f32 = 0.0;
 const HEIGHT_SCALE: f32 = 4.5;
-const INV_N2: f32 = 1.0 / 65536.0;
+const SPECTRUM_DK: f32 = TWO_PI / PATCH;
+const HEIGHT_NORM: f32 = HEIGHT_SCALE * SPECTRUM_DK;
 const TEXEL_WORLD: f32 = PATCH / 256.0;
 const TEXEL_PER_METER: f32 = 256.0 / PATCH;
 
@@ -226,7 +229,7 @@ function sampleHeight(worldX: f32, worldZ: f32): f32 {
   const h11: f32 = loadReal(x0 + 1, y0 + 1);
   const h0: f32 = h00 + (h10 - h00) * fx;
   const h1: f32 = h01 + (h11 - h01) * fx;
-  return (h0 + (h1 - h0) * fy) * HEIGHT_SCALE * INV_N2;
+  return (h0 + (h1 - h0) * fy) * HEIGHT_NORM;
 }
 
 function writePixel(pixel: i32, red: f32, green: f32, blue: f32): void {
@@ -272,22 +275,27 @@ function renderPixel(pixel: i32): void {
 
   let tPlane: f32 = 80.0;
   if (rayY < -0.0001) tPlane = (0.0 - cameraY) / rayY;
-  const t0: f32 = Mathf.max(tPlane - 14.0, 0.5);
-  const t1: f32 = tPlane + 18.0;
+  const t0: f32 = Mathf.max(tPlane - 36.0, 0.5);
+  const t1: f32 = tPlane + 36.0;
   const dt: f32 = (t1 - t0) / 48.0;
   let t: f32 = t0;
   let hitT: f32 = -1.0;
   let prevY: f32 = cameraY + rayY * t0;
   let prevH: f32 = sampleHeight(cameraX + rayX * t0, cameraZ + rayZ * t0);
+  if (prevY <= prevH) hitT = t0;
   for (let step: i32 = 0; step < 48; step++) {
     t += dt;
     const sampleX: f32 = cameraX + rayX * t;
     const sampleY: f32 = cameraY + rayY * t;
     const sampleZ: f32 = cameraZ + rayZ * t;
     const fieldH: f32 = sampleHeight(sampleX, sampleZ);
-    const crossed: bool = prevY >= prevH && sampleY <= fieldH;
     if (hitT < 0.0) {
-      if (crossed) hitT = t;
+      if (prevY >= prevH && sampleY <= fieldH) {
+        const num: f32 = prevY - prevH;
+        const den: f32 = num - (sampleY - fieldH);
+        const frac: f32 = den == 0.0 ? 1.0 : saturate(num / den);
+        hitT = t - dt + dt * frac;
+      }
     }
     prevY = sampleY;
     prevH = fieldH;
@@ -300,15 +308,16 @@ function renderPixel(pixel: i32): void {
     const v: f32 = hz * TEXEL_PER_METER + 128.0;
     const ix: i32 = <i32>Mathf.floor(u);
     const iy: i32 = <i32>Mathf.floor(v);
-    const hL: f32 = loadReal(ix - 1, iy) * HEIGHT_SCALE * INV_N2;
-    const hR: f32 = loadReal(ix + 1, iy) * HEIGHT_SCALE * INV_N2;
-    const hD: f32 = loadReal(ix, iy - 1) * HEIGHT_SCALE * INV_N2;
-    const hU: f32 = loadReal(ix, iy + 1) * HEIGHT_SCALE * INV_N2;
+    const hL: f32 = loadReal(ix - 1, iy) * HEIGHT_NORM;
+    const hR: f32 = loadReal(ix + 1, iy) * HEIGHT_NORM;
+    const hD: f32 = loadReal(ix, iy - 1) * HEIGHT_NORM;
+    const hU: f32 = loadReal(ix, iy + 1) * HEIGHT_NORM;
     let nx: f32 = hL - hR;
     let ny: f32 = 2.0 * TEXEL_WORLD;
     let nz: f32 = hD - hU;
     const nLen: f32 = Mathf.sqrt(Mathf.max(nx * nx + ny * ny + nz * nz, 0.000001));
     nx /= nLen; ny /= nLen; nz /= nLen;
+    const steep: f32 = saturate(1.0 - ny);
 
     let sunX: f32 = 0.35;
     let sunY: f32 = 0.75;
@@ -338,12 +347,16 @@ function renderPixel(pixel: i32): void {
     const reflR: f32 = 0.25 + (0.95 - 0.25) * reflT;
     const reflG: f32 = 0.45 + (0.95 - 0.45) * reflT;
     const reflB: f32 = 0.75 + (0.98 - 0.75) * reflT;
-    const waterR: f32 = 0.015 + diffuse * 0.05;
-    const waterG: f32 = 0.10 + diffuse * 0.22;
-    const waterB: f32 = 0.16 + diffuse * 0.30;
-    red = waterR * (1.0 - fresnel) + reflR * fresnel + spec * 0.65;
-    green = waterG * (1.0 - fresnel) + reflG * fresnel + spec * 0.62;
-    blue = waterB * (1.0 - fresnel) + reflB * fresnel + spec * 0.55;
+    const waterR: f32 = 0.01 + diffuse * 0.06 + steep * 0.04;
+    const waterG: f32 = 0.06 + diffuse * 0.22 + steep * 0.05;
+    const waterB: f32 = 0.10 + diffuse * 0.28;
+    const foam: f32 = saturate(steep * 1.4) * saturate(0.35 + diffuse);
+    red = waterR * (1.0 - fresnel) + reflR * fresnel + spec * 0.95;
+    green = waterG * (1.0 - fresnel) + reflG * fresnel + spec * 0.90;
+    blue = waterB * (1.0 - fresnel) + reflB * fresnel + spec * 0.80;
+    red = red * (1.0 - foam) + 0.82 * foam;
+    green = green * (1.0 - foam) + 0.88 * foam;
+    blue = blue * (1.0 - foam) + 0.90 * foam;
   }
 
   writePixel(pixel, red, green, blue);
@@ -360,7 +373,7 @@ export function main(): void {
     } else if (frame >= 1) {
       const cycle: i32 = (frame - 1) / 18;
       const phase: i32 = (frame - 1) % 18;
-      const simTime: f32 = <f32>cycle * 0.08;
+      const simTime: f32 = <f32>cycle * 0.5;
       if (phase == 0) {
         writeSpectrum(i, simTime);
         if (i == 0) store<f32>(TIME_SAMPLE_OFFSET, simTime);
