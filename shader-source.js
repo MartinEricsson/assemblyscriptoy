@@ -8,6 +8,7 @@ export const demoGroups = {
     foundations: 'visual foundations',
     compiler: 'compiler showcase',
     weekend: 'ray tracing in one weekend',
+    nextweek: 'ray tracing the next week',
     persistent: 'persistent memory',
     physics: 'physics',
     advanced: 'advanced rendering',
@@ -165,6 +166,13 @@ export const demoCatalog = {
         description: 'Look-from camera, defocus blur, and a reduced weekend sphere world.',
         features: ['AUTO PARALLEL', 'PERSISTENT', 'PROGRESSIVE'],
         load: () => import('./shaders/rtow_10_final.as?raw'),
+    },
+    rttnwMotion: {
+        name: 'Motion Blur',
+        group: 'nextweek',
+        description: 'Weekend sphere world with lambertian centers moving during the shutter.',
+        features: ['AUTO PARALLEL', 'PERSISTENT', 'PROGRESSIVE', 'MOTION'],
+        load: () => import('./shaders/rttnw_01_motion.as?raw'),
     },
     persistentLife: {
         name: 'Persistent Life',
