@@ -204,6 +204,13 @@ export const demoCatalog = {
         features: ['AUTO PARALLEL', 'PERSISTENT', 'PROGRESSIVE'],
         load: () => import('./shaders/rttnw_05_quads.as?raw'),
     },
+    rttnwLights: {
+        name: 'Simple Light',
+        group: 'nextweek',
+        description: 'Marble spheres lit by an emissive quad and sphere against black.',
+        features: ['AUTO PARALLEL', 'PERSISTENT', 'PROGRESSIVE'],
+        load: () => import('./shaders/rttnw_06_lights.as?raw'),
+    },
     persistentLife: {
         name: 'Persistent Life',
         group: 'persistent',
