@@ -174,6 +174,13 @@ export const demoCatalog = {
         features: ['AUTO PARALLEL', 'PERSISTENT', 'PROGRESSIVE', 'MOTION'],
         load: () => import('./shaders/rttnw_01_motion.as?raw'),
     },
+    rttnwCheckers: {
+        name: 'Checkered Spheres',
+        group: 'nextweek',
+        description: 'Two large spheres with a spatial checker texture against a solid sky.',
+        features: ['AUTO PARALLEL', 'PERSISTENT', 'PROGRESSIVE'],
+        load: () => import('./shaders/rttnw_02_checkers.as?raw'),
+    },
     persistentLife: {
         name: 'Persistent Life',
         group: 'persistent',
