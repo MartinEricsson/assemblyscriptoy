@@ -225,6 +225,14 @@ export const demoCatalog = {
         features: ['AUTO PARALLEL', 'PERSISTENT', 'PROGRESSIVE'],
         load: () => import('./shaders/rttnw_08_smoke.as?raw'),
     },
+    rttnwFinal: {
+        name: 'Final Scene',
+        group: 'nextweek',
+        description: 'Reduced Next Week final: boxes, instances, earth, volumes, and motion.',
+        features: ['AUTO PARALLEL', 'PERSISTENT', 'PROGRESSIVE', 'TEXTURE'],
+        initializeMemory: initializeRttnwEarthMemory,
+        load: () => import('./shaders/rttnw_09_final.as?raw'),
+    },
     persistentLife: {
         name: 'Persistent Life',
         group: 'persistent',
