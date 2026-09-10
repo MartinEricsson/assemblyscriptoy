@@ -54,10 +54,10 @@ function renderDemoNavigation() {
                 </span>
             </button></li>`;
         }).join('');
-        return `<div class="sidebar-group">
-            <div class="sidebar-group-label">${escapeHTML(label)}</div>
+        return `<details class="sidebar-group" data-group="${escapeHTML(groupId)}">
+            <summary class="sidebar-group-label">${escapeHTML(label)}</summary>
             <ul class="demo-list" role="listbox" aria-label="${escapeHTML(label)} demos">${items}</ul>
-        </div>`;
+        </details>`;
     }).join('');
 
     selectElement.innerHTML = entries
@@ -488,6 +488,11 @@ window.loadDemo = async function (demoName) {
     // Highlight active item in the brutalist sidebar
     document.querySelectorAll('.demo-item').forEach(el => {
         el.classList.toggle('active', el.dataset.demo === demoName);
+    });
+    document.querySelectorAll('.sidebar-group').forEach(group => {
+        if (group.querySelector(`.demo-item[data-demo="${demoName}"]`)) {
+            group.open = true;
+        }
     });
 
     // Update source
