@@ -2,6 +2,7 @@
 
 import { initializePhotorealMeshMemory } from './src/photoreal-scene-builder.js';
 import { initializePbfHydrostaticMemory } from './src/pbf-scene-builder.js';
+import { initializeRttnwEarthMemory } from './src/rttnw-earth-texture.js';
 
 export const demoGroups = {
     start: 'getting started',
@@ -180,6 +181,14 @@ export const demoCatalog = {
         description: 'Two large spheres with a spatial checker texture against a solid sky.',
         features: ['AUTO PARALLEL', 'PERSISTENT', 'PROGRESSIVE'],
         load: () => import('./shaders/rttnw_02_checkers.as?raw'),
+    },
+    rttnwEarth: {
+        name: 'Earth',
+        group: 'nextweek',
+        description: 'A lambertian globe sampled from a packed equirectangular texture.',
+        features: ['AUTO PARALLEL', 'PERSISTENT', 'PROGRESSIVE', 'TEXTURE'],
+        initializeMemory: initializeRttnwEarthMemory,
+        load: () => import('./shaders/rttnw_03_earth.as?raw'),
     },
     persistentLife: {
         name: 'Persistent Life',
