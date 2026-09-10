@@ -218,6 +218,13 @@ export const demoCatalog = {
         features: ['AUTO PARALLEL', 'PERSISTENT', 'PROGRESSIVE'],
         load: () => import('./shaders/rttnw_07_cornell.as?raw'),
     },
+    rttnwSmoke: {
+        name: 'Cornell Smoke',
+        group: 'nextweek',
+        description: 'Cornell box with constant-density black and white media.',
+        features: ['AUTO PARALLEL', 'PERSISTENT', 'PROGRESSIVE'],
+        load: () => import('./shaders/rttnw_08_smoke.as?raw'),
+    },
     persistentLife: {
         name: 'Persistent Life',
         group: 'persistent',
