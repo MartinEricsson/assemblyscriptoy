@@ -102,7 +102,7 @@ export const demoCatalog = {
         name: 'SIMD Packet Sphere Tracer',
         slug: 'simd-packet',
         group: 'compiler',
-        description: 'Four jittered primary rays intersect spheres as f32x4 packets.',
+        description: 'Four jittered primary rays intersect spheres as f32x4 packets. The SIMD exhibit is the WAT listing.',
         features: ['AUTO PARALLEL', 'SIMD', 'RAY PACKET'],
         assemblyScriptOptions: { enable: ['simd'] },
         load: () => import('./shaders/simd_packet_tracer.as?raw'),

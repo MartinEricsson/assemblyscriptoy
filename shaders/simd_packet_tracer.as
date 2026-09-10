@@ -4,8 +4,9 @@
 //  Four jittered primary rays per pixel travel as f32x4 origin
 //  and direction lanes. Sphere hits use v128 disc math so the
 //  WAT listing should show f32x4.add / sub / mul / sqrt rather
-//  than four scalar solvers. Neon Kaleidoscope remains the M0
-//  palette demo; this one is the SIMD intersection exhibit.
+//  than four scalar solvers. Gasm 0.9 still lowers those ops to
+//  vec4<u32> bitcasts in WGSL; the SIMD exhibit is the WAT.
+//  Neon Kaleidoscope remains the M0 palette demo.
 // ============================================================
 
 const WIDTH: i32 = 256;
@@ -30,10 +31,6 @@ function sinF(x: f32): f32 {
   return x * (1.0 - x2 / 6.0 * (1.0 - x2 / 20.0 * (1.0 - x2 / 42.0)));
 }
 
-function cosF(x: f32): f32 {
-  return sinF(x + PI * 0.5);
-}
-
 function clamp0(v: f32): f32 {
   return v < 0.0 ? 0.0 : v;
 }
@@ -42,13 +39,6 @@ function clamp255(v: f32): i32 {
   if (v < 0.0) return 0;
   if (v > 255.0) return 255;
   return <i32>v;
-}
-
-function extractF32(vec: v128, lane: i32): f32 {
-  if (lane == 0) return v128.extract_lane<f32>(vec, 0);
-  if (lane == 1) return v128.extract_lane<f32>(vec, 1);
-  if (lane == 2) return v128.extract_lane<f32>(vec, 2);
-  return v128.extract_lane<f32>(vec, 3);
 }
 
 function sphereT4(
@@ -116,7 +106,8 @@ function bgCenterX(s: i32): f32 {
 }
 
 function bgCenterY(s: i32, angle: f32): f32 {
-  return 0.4 + sinF(angle + <f32>(s % 4) + <f32>(s / 4));
+  // Sit on the y=-1 plane at the bottom of the bounce, then rise.
+  return -1.0 + BG_RADIUS + (sinF(angle + <f32>(s % 4) + <f32>(s / 4)) + 1.0);
 }
 
 function bgCenterZ(s: i32): f32 {
@@ -168,13 +159,25 @@ function shadeLane(
   frontX: f32, frontY: f32, frontZ: f32,
   lx: f32, ly: f32, lz: f32,
   angle: f32,
-): v128 {
+  channel: i32,
+): f32 {
+  if (dy < 0.0) {
+    const tPlane: f32 = -1.0 / dy;
+    if (tPlane > 0.0) {
+      if (tHit < 0.0) {
+        tHit = tPlane;
+        idHit = ID_PLANE;
+      } else if (tPlane < tHit) {
+        tHit = tPlane;
+        idHit = ID_PLANE;
+      }
+    }
+  }
+
   if (tHit < 0.0) {
-    let sky: v128 = v128.splat<f32>(0.0);
-    sky = v128.replace_lane<f32>(sky, 0, skyR(dy));
-    sky = v128.replace_lane<f32>(sky, 1, skyG(dy));
-    sky = v128.replace_lane<f32>(sky, 2, skyB(dy));
-    return sky;
+    if (channel == 0) return skyR(dy);
+    if (channel == 1) return skyG(dy);
+    return skyB(dy);
   }
 
   const hx: f32 = dx * tHit;
@@ -246,17 +249,15 @@ function shadeLane(
     cb = cb + skyB(rdy) * fres;
   }
 
-  let rgb: v128 = v128.splat<f32>(0.0);
-  rgb = v128.replace_lane<f32>(rgb, 0, cr);
-  rgb = v128.replace_lane<f32>(rgb, 1, cg);
-  rgb = v128.replace_lane<f32>(rgb, 2, cb);
-  return rgb;
+  if (channel == 0) return cr;
+  if (channel == 1) return cg;
+  return cb;
 }
 
 export function main(): void {
   const angle: f32 = load<f32>(TIME_OFFSET) * 0.016;
   const frontX: f32 = sinF(angle + 1.5);
-  const frontY: f32 = -0.35 + 0.2 * sinF(angle);
+  const frontY: f32 = -1.0 + FRONT_RADIUS + 0.2 * (sinF(angle) + 1.0);
   const frontZ: f32 = 4.0;
   const lightX: f32 = 0.35;
   const lightY: f32 = 0.8;
@@ -286,7 +287,8 @@ export function main(): void {
       ),
       v128.splat<f32>(1.0),
     );
-    const ry: v128 = v128.splat<f32>(<f32>y / 128.0 - 1.0);
+    // Canvas y=0 is the top row; negate NDC Y so +Y (sky) is up.
+    const ry: v128 = v128.splat<f32>(1.0 - <f32>y / 128.0);
     const len2: v128 = v128.add<f32>(
       v128.add<f32>(v128.mul<f32>(rx, rx), v128.mul<f32>(ry, ry)),
       v128.splat<f32>(1.0),
@@ -321,34 +323,66 @@ export function main(): void {
     let sumR: f32 = 0.0;
     let sumG: f32 = 0.0;
     let sumB: f32 = 0.0;
-    for (let lane: i32 = 0; lane < 4; lane++) {
-      let tHit: f32 = extractF32(tBest, lane);
-      let idHit: f32 = extractF32(idBest, lane);
-      const ldx: f32 = extractF32(dx, lane);
-      const ldy: f32 = extractF32(dy, lane);
-      const ldz: f32 = extractF32(dz, lane);
-
-      if (ldy < 0.0) {
-        const tPlane: f32 = -1.0 / ldy;
-        if (tPlane > 0.0) {
-          if (tHit < 0.0) {
-            tHit = tPlane;
-            idHit = ID_PLANE;
-          } else if (tPlane < tHit) {
-            tHit = tPlane;
-            idHit = ID_PLANE;
-          }
-        }
-      }
-
-      const rgb: v128 = shadeLane(
-        tHit, idHit, ldx, ldy, ldz,
-        frontX, frontY, frontZ, lx, ly, lz, angle,
-      );
-      sumR = sumR + v128.extract_lane<f32>(rgb, 0);
-      sumG = sumG + v128.extract_lane<f32>(rgb, 1);
-      sumB = sumB + v128.extract_lane<f32>(rgb, 2);
-    }
+    sumR = sumR + shadeLane(
+      v128.extract_lane<f32>(tBest, 0), v128.extract_lane<f32>(idBest, 0),
+      v128.extract_lane<f32>(dx, 0), v128.extract_lane<f32>(dy, 0), v128.extract_lane<f32>(dz, 0),
+      frontX, frontY, frontZ, lx, ly, lz, angle, 0,
+    );
+    sumG = sumG + shadeLane(
+      v128.extract_lane<f32>(tBest, 0), v128.extract_lane<f32>(idBest, 0),
+      v128.extract_lane<f32>(dx, 0), v128.extract_lane<f32>(dy, 0), v128.extract_lane<f32>(dz, 0),
+      frontX, frontY, frontZ, lx, ly, lz, angle, 1,
+    );
+    sumB = sumB + shadeLane(
+      v128.extract_lane<f32>(tBest, 0), v128.extract_lane<f32>(idBest, 0),
+      v128.extract_lane<f32>(dx, 0), v128.extract_lane<f32>(dy, 0), v128.extract_lane<f32>(dz, 0),
+      frontX, frontY, frontZ, lx, ly, lz, angle, 2,
+    );
+    sumR = sumR + shadeLane(
+      v128.extract_lane<f32>(tBest, 1), v128.extract_lane<f32>(idBest, 1),
+      v128.extract_lane<f32>(dx, 1), v128.extract_lane<f32>(dy, 1), v128.extract_lane<f32>(dz, 1),
+      frontX, frontY, frontZ, lx, ly, lz, angle, 0,
+    );
+    sumG = sumG + shadeLane(
+      v128.extract_lane<f32>(tBest, 1), v128.extract_lane<f32>(idBest, 1),
+      v128.extract_lane<f32>(dx, 1), v128.extract_lane<f32>(dy, 1), v128.extract_lane<f32>(dz, 1),
+      frontX, frontY, frontZ, lx, ly, lz, angle, 1,
+    );
+    sumB = sumB + shadeLane(
+      v128.extract_lane<f32>(tBest, 1), v128.extract_lane<f32>(idBest, 1),
+      v128.extract_lane<f32>(dx, 1), v128.extract_lane<f32>(dy, 1), v128.extract_lane<f32>(dz, 1),
+      frontX, frontY, frontZ, lx, ly, lz, angle, 2,
+    );
+    sumR = sumR + shadeLane(
+      v128.extract_lane<f32>(tBest, 2), v128.extract_lane<f32>(idBest, 2),
+      v128.extract_lane<f32>(dx, 2), v128.extract_lane<f32>(dy, 2), v128.extract_lane<f32>(dz, 2),
+      frontX, frontY, frontZ, lx, ly, lz, angle, 0,
+    );
+    sumG = sumG + shadeLane(
+      v128.extract_lane<f32>(tBest, 2), v128.extract_lane<f32>(idBest, 2),
+      v128.extract_lane<f32>(dx, 2), v128.extract_lane<f32>(dy, 2), v128.extract_lane<f32>(dz, 2),
+      frontX, frontY, frontZ, lx, ly, lz, angle, 1,
+    );
+    sumB = sumB + shadeLane(
+      v128.extract_lane<f32>(tBest, 2), v128.extract_lane<f32>(idBest, 2),
+      v128.extract_lane<f32>(dx, 2), v128.extract_lane<f32>(dy, 2), v128.extract_lane<f32>(dz, 2),
+      frontX, frontY, frontZ, lx, ly, lz, angle, 2,
+    );
+    sumR = sumR + shadeLane(
+      v128.extract_lane<f32>(tBest, 3), v128.extract_lane<f32>(idBest, 3),
+      v128.extract_lane<f32>(dx, 3), v128.extract_lane<f32>(dy, 3), v128.extract_lane<f32>(dz, 3),
+      frontX, frontY, frontZ, lx, ly, lz, angle, 0,
+    );
+    sumG = sumG + shadeLane(
+      v128.extract_lane<f32>(tBest, 3), v128.extract_lane<f32>(idBest, 3),
+      v128.extract_lane<f32>(dx, 3), v128.extract_lane<f32>(dy, 3), v128.extract_lane<f32>(dz, 3),
+      frontX, frontY, frontZ, lx, ly, lz, angle, 1,
+    );
+    sumB = sumB + shadeLane(
+      v128.extract_lane<f32>(tBest, 3), v128.extract_lane<f32>(idBest, 3),
+      v128.extract_lane<f32>(dx, 3), v128.extract_lane<f32>(dy, 3), v128.extract_lane<f32>(dz, 3),
+      frontX, frontY, frontZ, lx, ly, lz, angle, 2,
+    );
 
     const r: f32 = Mathf.sqrt(sumR * 0.25);
     const g: f32 = Mathf.sqrt(sumG * 0.25);
