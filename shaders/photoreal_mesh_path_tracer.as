@@ -363,7 +363,10 @@ function tracePath(
       accumR += throughR * (0.44 + sky * 0.20);
       accumG += throughG * (0.42 + sky * 0.18);
       accumB += throughB * (0.37 + sky * 0.15);
-      break;
+      // Do not `break` here: Gasm 0.9.1 also emits this miss-sky after the
+      // bounce loop, so every finished path gets a second sky wash.
+      bounce = MAX_BOUNCES;
+      continue;
     }
 
     const hx: f32 = ox + dx * hitT;

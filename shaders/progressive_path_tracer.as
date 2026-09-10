@@ -165,7 +165,10 @@ export function main(): void {
         radianceR += throughputR * (0.08 + sky * 0.16);
         radianceG += throughputG * (0.10 + sky * 0.20);
         radianceB += throughputB * (0.16 + sky * 0.34);
-        break;
+        // Do not `break` here: Gasm 0.9.1 also emits this miss-sky after the
+        // bounce loop, so every finished path gets a second sky wash.
+        bounce = 4;
+        continue;
       }
 
       const hitX: f32 = ox + dx * bestT;

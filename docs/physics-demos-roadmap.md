@@ -9,7 +9,7 @@ The initial section contains two fixed 3D Position-Based Fluids benchmarks built
 - **Hydrostatic Column** tests equilibrium, density error, and residual velocity.
 - **Dam Break** tests transient flow, boundary response, and volume preservation.
 
-Both retain the playground’s current constraints: one 65,536-work-item dispatch per rendered frame, a 256×256 output, one linear 4 MiB memory buffer, and equivalent AssemblyScript/Wasm and Gasm/WebGPU execution. The existing **Rigid Ball SDF Physics** showcase is also grouped under Physics, unchanged.
+Both retain the playground’s current constraints: one 65,536-work-item dispatch per rendered frame, a 256×256 output, one linear 4 MiB memory buffer, and equivalent AssemblyScript/Wasm and Gasm/WebGPU execution. The section also includes **Rigid Ball SDF Physics** and **Cable Drop Lab**, a persistent Verlet/Jacobi cable bundle rendered with analytic capsule intersections, soft shadows, and contact ambient occlusion.
 
 ## Candidate independent demos
 

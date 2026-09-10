@@ -113,6 +113,22 @@ for (const [demoId, entry] of catalogEntries) {
             );
         }
     }
+    if (catalogEntry.demoId === 'cableCylinderDynamics') {
+        for (const requiredSource of [
+            'function integrateNode(',
+            'function solveNode(',
+            'function rayCapsuleT(',
+            'function shadowRay(',
+            'function ambientOcclusion(',
+        ]) {
+            if (!source.includes(requiredSource)) {
+                throw new Error(`${catalogEntry.demoId}: missing cable demo contract ${requiredSource}`);
+            }
+        }
+        if (catalogEntry.clock !== 'step' || catalogEntry.execution || catalogEntry.sourceType) {
+            throw new Error(`${catalogEntry.demoId}: cable simulation must use the stepped AssemblyScript/Gasm path.`);
+        }
+    }
     if (gasmResult.dispatchInfo.workItemsX !== 256 * 256) {
         throw new Error(
             `${catalogEntry.demoId}: expected 65,536 work items, got ${gasmResult.dispatchInfo.workItemsX}.`,

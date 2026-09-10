@@ -59,16 +59,23 @@ export function main(): void {
     }
 
     const palette: i32 = (iter * 9 + (frame >> 2)) & 255;
-    const lineGlow: i32 = clamp255(<i32>((0.08 - trapLine) * 3600.0));
-    const circleGlow: i32 = clamp255(<i32>((0.10 - trapCircle) * 2800.0));
     const escaped: bool = iter < 140;
 
     let r: i32 = escaped ? triWave(palette) : 3;
     let g: i32 = escaped ? triWave(palette + 85) : 5;
     let b: i32 = escaped ? triWave(palette + 170) : 12;
-    r = clamp255(r + circleGlow);
-    g = clamp255(g + lineGlow);
-    b = clamp255(b + (lineGlow + circleGlow) / 2);
+
+    // Trap glows stay in f32 (unsuffixed literals are f64). Gasm 0.8.1 dropped
+    // those conversions, so the 3600/2800 gains were never visible; 0.9.1
+    // evaluates them and washed the filled set to white. Keep a modest
+    // filament overlay on escaped orbits only.
+    if (escaped) {
+      const lineGlow: i32 = clamp255(<i32>((<f32>0.08 - trapLine) * <f32>800.0));
+      const circleGlow: i32 = clamp255(<i32>((<f32>0.10 - trapCircle) * <f32>600.0));
+      r = clamp255(r + circleGlow);
+      g = clamp255(g + lineGlow);
+      b = clamp255(b + (lineGlow + circleGlow) / 2);
+    }
 
     const offset: i32 = 16 + i * 12;
     store<i32>(offset, r);
