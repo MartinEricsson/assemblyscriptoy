@@ -250,6 +250,34 @@ for (const [demoId, entry] of catalogEntries) {
         }
     }
 
+    if (catalogEntry.demoId === 'computeRasterizer') {
+        for (const requiredSource of [
+            'const TRI_COUNT: i32 = 14;',
+            'function edge(',
+            'function project(',
+            'function cubeCorner(',
+        ]) {
+            if (!source.includes(requiredSource)) {
+                throw new Error(`${catalogEntry.demoId}: missing compute rasterizer contract ${requiredSource}`);
+            }
+        }
+        if (source.includes('initializeMemory')) {
+            throw new Error(`${catalogEntry.demoId}: compute rasterizer must not mention initializeMemory.`);
+        }
+        if (/atomic\.|atomicAdd/.test(source)) {
+            throw new Error(`${catalogEntry.demoId}: compute rasterizer unexpectedly uses atomics.`);
+        }
+        if (catalogEntry.assemblyScriptOptions || catalogEntry.compileOptions || catalogEntry.clock) {
+            throw new Error(`${catalogEntry.demoId}: compute rasterizer must not enable M0, SIMD, or a stepped clock.`);
+        }
+        if (!source.includes('t < TRI_COUNT') && !source.includes('t < 14')) {
+            throw new Error(`${catalogEntry.demoId}: expected an inner loop over triangles.`);
+        }
+        if (gasmResult.wgsl.includes('atomic')) {
+            throw new Error(`${catalogEntry.demoId}: generated WGSL must not contain atomics.`);
+        }
+    }
+
     if (shaderFile === 'starter.as') {
         const minifiedResult = compileGasmIntegrator(binary, { minify: true });
         if (!minifiedResult.ok) {

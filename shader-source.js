@@ -116,6 +116,14 @@ export const demoCatalog = {
         clock: 'step',
         load: () => import('./shaders/tessendorf_ocean.as?raw'),
     },
+    computeRasterizer: {
+        name: 'Compute Triangle Rasterizer',
+        slug: 'compute-raster',
+        group: 'compiler',
+        description: 'A spinning cube and ground plane filled with barycentric coverage and a per-pixel z-test.',
+        features: ['AUTO PARALLEL', 'RASTER', 'Z-TEST'],
+        load: () => import('./shaders/compute_rasterizer.as?raw'),
+    },
     rtowImage: {
         name: 'Output an Image',
         group: 'weekend',
