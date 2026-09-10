@@ -211,6 +211,13 @@ export const demoCatalog = {
         features: ['AUTO PARALLEL', 'PERSISTENT', 'PROGRESSIVE'],
         load: () => import('./shaders/rttnw_06_lights.as?raw'),
     },
+    rttnwCornell: {
+        name: 'Cornell Box',
+        group: 'nextweek',
+        description: 'Book Cornell walls, ceiling light, and two rotated white boxes.',
+        features: ['AUTO PARALLEL', 'PERSISTENT', 'PROGRESSIVE'],
+        load: () => import('./shaders/rttnw_07_cornell.as?raw'),
+    },
     persistentLife: {
         name: 'Persistent Life',
         group: 'persistent',
