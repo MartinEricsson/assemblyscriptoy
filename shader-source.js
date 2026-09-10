@@ -197,6 +197,13 @@ export const demoCatalog = {
         features: ['AUTO PARALLEL', 'PERSISTENT', 'PROGRESSIVE'],
         load: () => import('./shaders/rttnw_04_perlin.as?raw'),
     },
+    rttnwQuads: {
+        name: 'Quads',
+        group: 'nextweek',
+        description: 'Five lambertian parallelograms from the book, square frame.',
+        features: ['AUTO PARALLEL', 'PERSISTENT', 'PROGRESSIVE'],
+        load: () => import('./shaders/rttnw_05_quads.as?raw'),
+    },
     persistentLife: {
         name: 'Persistent Life',
         group: 'persistent',
