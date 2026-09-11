@@ -3,6 +3,7 @@
 import { initializePhotorealMeshMemory } from './src/photoreal-scene-builder.js';
 import { initializePbfHydrostaticMemory } from './src/pbf-scene-builder.js';
 import { initializeRttnwEarthMemory } from './src/rttnw-earth-texture.js';
+import { initializeNeuralSdfMemory } from './src/neural-sdf-weights.js';
 
 export const demoGroups = {
     start: 'getting started',
@@ -131,6 +132,15 @@ export const demoCatalog = {
         description: 'Left half iterates in f32, right half in f64, so Results shows hot-loop demotion.',
         features: ['AUTO PARALLEL', 'F64 DEMOTION', 'SPLIT VIEW'],
         load: () => import('./shaders/f64_mandelbrot_split.as?raw'),
+    },
+    neuralSdf: {
+        name: 'Neural SDF MLP',
+        slug: 'neural-sdf',
+        group: 'compiler',
+        description: 'A host-baked 24-32-32-1 MLP raymarched as a torus signed distance.',
+        features: ['AUTO PARALLEL', 'MLP', 'PERSISTENT', 'RAY MARCH'],
+        initializeMemory: initializeNeuralSdfMemory,
+        load: () => import('./shaders/neural_sdf.as?raw'),
     },
     rtowImage: {
         name: 'Output an Image',

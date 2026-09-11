@@ -23,7 +23,7 @@ when done.
 | 009 | Add a staged Tessendorf FFT ocean demo | P1 | L | — | DONE |
 | 010 | Add a compute triangle rasterizer demo | P1 | L | — | DONE |
 | 011 | Add an f64-hot-loop split Mandelbrot demotion demo | P2 | M | — | DONE |
-| 012 | Add a host-baked MLP neural SDF demo | P2 | L | — | TODO |
+| 012 | Add a host-baked MLP neural SDF demo | P2 | L | — | DONE |
 
 Status values: TODO | IN PROGRESS | DONE | BLOCKED (with one-line reason) |
 REJECTED (with one-line rationale)

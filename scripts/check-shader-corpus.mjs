@@ -9,6 +9,7 @@ import {
     PHOTOREAL_FIELD_SIZE,
     PHOTOREAL_MESH_MAGIC,
 } from '../src/photoreal-scene-builder.js';
+import { MLP_MAGIC, MLP_WEIGHT_COUNT } from '../src/neural-sdf-weights.js';
 import { PBF_FLUID_COUNT } from '../src/pbf-scene-builder.js';
 import { MEMORY_BYTES, createDefaultMemoryLayout } from '../src/runtime-memory-layout.js';
 
@@ -164,6 +165,16 @@ for (const [demoId, entry] of catalogEntries) {
                 throw new Error('photorealMeshPathTracer: unexpected progressive accumulation cell count.');
             }
         }
+        if (catalogEntry.demoId === 'neuralSdf') {
+            if (summary.weightCount !== MLP_WEIGHT_COUNT) {
+                throw new Error(
+                    `${catalogEntry.demoId}: expected weightCount ${MLP_WEIGHT_COUNT}, got ${summary.weightCount}.`,
+                );
+            }
+            if (memoryI32[stateStart / 4] !== MLP_MAGIC) {
+                throw new Error(`${catalogEntry.demoId}: expected packed MLP1 magic header.`);
+            }
+        }
     }
 
     if (catalogEntry.demoId === 'precisionJulia') {
@@ -291,6 +302,30 @@ for (const [demoId, entry] of catalogEntries) {
         }
         if (gasmResult.wgsl.includes('atomic')) {
             throw new Error(`${catalogEntry.demoId}: generated WGSL must not contain atomics.`);
+        }
+    }
+
+    if (catalogEntry.demoId === 'neuralSdf') {
+        for (const requiredSource of [
+            'function mlpSdf(',
+            'function encodeInput(',
+            'const TILE_PHASES: i32 = 16;',
+        ]) {
+            if (!source.includes(requiredSource)) {
+                throw new Error(`${catalogEntry.demoId}: missing neural SDF contract ${requiredSource}`);
+            }
+        }
+        if (!source.includes('0x4D4C5031') && !source.includes('1296846897')) {
+            throw new Error(`${catalogEntry.demoId}: expected MLP1 magic constant in the shader.`);
+        }
+        if (/sgd|learningRate|atomic/i.test(source)) {
+            throw new Error(`${catalogEntry.demoId}: shader must not train, mention learningRate, or use atomics.`);
+        }
+        if (typeof catalogEntry.initializeMemory !== 'function') {
+            throw new Error(`${catalogEntry.demoId}: expected a host initializeMemory packer.`);
+        }
+        if (catalogEntry.assemblyScriptOptions || catalogEntry.compileOptions) {
+            throw new Error(`${catalogEntry.demoId}: neural SDF must not enable M0 or SIMD.`);
         }
     }
 
