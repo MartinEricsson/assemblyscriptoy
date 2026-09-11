@@ -1,12 +1,24 @@
 // ============================================================
 //  Neural SDF MLP - host-baked 24-32-32-1 inference
 // ============================================================
-//  Weights are packed into persistent linear memory by the host
-//  (magic MLP1). This shader runs inference only: positional
-//  encoding, two ReLU layers, a linear distance head, and a
-//  raymarch against min(mlp, analytic ground). There is no
-//  training loop. A 16-phase 4x4 tile update keeps dispatches
-//  short; other output pixels stay resident.
+//  What this is: the host trains a tiny MLP on a static torus
+//  SDF (R=0.72, r=0.24) with fixed-seed SGD and writes 1889 f32
+//  weights into persistent memory (magic MLP1). This shader
+//  never trains. It positional-encodes the sample point, runs
+//  two ReLU matmuls and a linear distance head, and raymarches
+//  min(mlp, analytic ground at y = -1). The WAT/WGSL should
+//  show nested f32 loops and max(x, 0), not sdTorus.
+//
+//  Why it looks noisy / glitchy: that is the demo, not a miss.
+//  A 24-32-32-1 net only approximately fits the torus (host MAE
+//  is allowed up to 0.18), so the ring is soft, blobby, and
+//  sparkly — neural distances are not conservative, and the
+//  march can overshoot. Each frame updates one 4x4 tile phase
+//  (16 phases) so dispatches stay short; the other pixels stay
+//  resident. The camera still orbits, so stale tiles lag by up
+//  to 16 frames and the picture tears. Wait one full cycle for
+//  every pixel to refresh. The checker floor is analytic and
+//  should stay sharp; the torus is the learned field.
 // ============================================================
 
 const WIDTH: i32 = 256;

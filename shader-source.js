@@ -137,7 +137,7 @@ export const demoCatalog = {
         name: 'Neural SDF MLP',
         slug: 'neural-sdf',
         group: 'compiler',
-        description: 'A host-baked 24-32-32-1 MLP raymarched as a torus signed distance.',
+        description: 'Host SGD bakes a tiny 24-32-32-1 MLP of a torus; the shader only infers and raymarches. The soft noisy ring and 16-phase tile tearing are expected — look at the WAT/WGSL matmuls, not a clean analytic SDF.',
         features: ['AUTO PARALLEL', 'MLP', 'PERSISTENT', 'RAY MARCH'],
         initializeMemory: initializeNeuralSdfMemory,
         load: () => import('./shaders/neural_sdf.as?raw'),
