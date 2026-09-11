@@ -175,6 +175,22 @@ for (const [demoId, entry] of catalogEntries) {
         }
     }
 
+    if (catalogEntry.demoId === 'f64MandelbrotSplit') {
+        if (!gasmResult.diagnostics.featuresUsed.usesF64) {
+            throw new Error('f64MandelbrotSplit: expected f64 feature detection.');
+        }
+        if (!gasmResult.diagnostics.demotions.some(event => event.kind === 'f64->f32')) {
+            throw new Error('f64MandelbrotSplit: expected an f64->f32 demotion diagnostic.');
+        }
+        const mainSrc = source.split('export function main')[1] ?? '';
+        if (!mainSrc.includes('f64') || !mainSrc.includes('zr2')) {
+            throw new Error('f64MandelbrotSplit: expected an f64 iterator (zr2) inside main.');
+        }
+        if (source.includes('export function precisionProbe')) {
+            throw new Error('f64MandelbrotSplit: must not export precisionProbe.');
+        }
+    }
+
     if (catalogEntry.demoId === 'simdKaleidoscope') {
         const advisoryText = gasmResult.diagnostics.advisories.map(item => item.message).join('\n');
         if (!advisoryText.includes('gasm:simd:1.0') || !advisoryText.includes('gasm:math:1.0')) {

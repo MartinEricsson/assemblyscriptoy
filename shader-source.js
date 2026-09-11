@@ -124,6 +124,14 @@ export const demoCatalog = {
         features: ['AUTO PARALLEL', 'RASTER', 'Z-TEST'],
         load: () => import('./shaders/compute_rasterizer.as?raw'),
     },
+    f64MandelbrotSplit: {
+        name: 'F64 Split Mandelbrot',
+        slug: 'f64-split',
+        group: 'compiler',
+        description: 'Left half iterates in f32, right half in f64, so Results shows hot-loop demotion.',
+        features: ['AUTO PARALLEL', 'F64 DEMOTION', 'SPLIT VIEW'],
+        load: () => import('./shaders/f64_mandelbrot_split.as?raw'),
+    },
     rtowImage: {
         name: 'Output an Image',
         group: 'weekend',
